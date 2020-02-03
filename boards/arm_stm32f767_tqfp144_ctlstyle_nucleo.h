@@ -411,6 +411,7 @@
 	//#define TSC1_TYPE TSC_TYPE_STMPE811	/* touch screen controller */
 	//#define DAC1_TYPE	99999		/* наличие ЦАП для подстройки тактовой частоты */
 	#define WITHSI5351AREPLACE 1
+	//#define WITHSI5351_QUAD_CLK0_CLK1 1
 
 	#define DDS1_CLK_DIV	1		/* Делитель опорной частоты перед подачей в DDS1 */
 

@@ -267,6 +267,8 @@ static const uint_fast8_t multisynchbase [2] =
 	SI5351a_SYNTH_MS_1,
 };
 
+static uint_fast32_t si5351a_divider;
+
 static uint_fast8_t si5351aSetFrequencyX(
 	uint_fast8_t clkout, 
 	uint_fast32_t frequency, 
@@ -280,18 +282,17 @@ static uint_fast8_t si5351aSetFrequencyX(
 	uint_fast8_t mult;
 	uint_fast32_t num;
 	uint_fast32_t denom;
-	uint_fast32_t divider;
 
 	frequency *= si5351a_get_divider(hint);
 
 	// intermediate VCO frequency in the range of 600 to 900 MHz
 	// Valid Multisynth divider ratios are 4, 6, 8,
-	divider = 900000000uL / frequency;// Calculate the division ratio. 900,000,000 is the maximum internal 
+	si5351a_divider = 900000000uL / frequency;// Calculate the division ratio. 900,000,000 is the maximum internal
 									// PLL frequency: 900MHz
-	if (divider % 2) 
-		divider -= 1;		// Ensure an even integer division ratio
+	if (si5351a_divider % 2)
+		si5351a_divider -= 1;		// Ensure an even integer division ratio
 
-	pllFreq = divider * frequency;	// Calculate the pllFrequency: the divider * desired output frequency
+	pllFreq = si5351a_divider * frequency;	// Calculate the pllFrequency: the divider * desired output frequency
 
 	denom = 0x000FFFFF;				// For simplicity we set the denominator to the maximum 0x000FFFFF
 	mult = pllFreq / xtalFreq;		// Determine the multiplier to get to the required pllFrequency
@@ -309,7 +310,7 @@ static uint_fast8_t si5351aSetFrequencyX(
 	// represented by constants SI5351a_R_DIV1 to SI5351a_R_DIV128 (see si5351a.h header file)
 	// If you want to output frequencies below 1MHz, you have to use the 
 	// final R division stage
-	si535x_setupMultisynth(multisynchbase [clkout], divider, freqs [hint].outdiv);
+	si535x_setupMultisynth(multisynchbase [clkout], si5351a_divider, freqs [hint].outdiv);
 	return mult;
 }
 
@@ -377,11 +378,41 @@ static void si5351aSetFrequencyB(uint_fast32_t frequency)
 
 }
 
-// Function template
-static void si5351aQuadrature(void)
+//
+// Set CLK0 output ON and to the specified frequency
+// Frequency is in the range 1MHz to 150MHz
+// Example: si5351aSetFrequency(10000000);
+// will set output CLK0 to 10MHz
+//
+// This example sets up PLL A
+// and MultiSynth 0
+// and produces the output on CLK0
+//
+static void si5351aSetFrequencyABquad(uint_fast32_t frequency)
 {
-	si535x_SendRegister(SI5351a_CLK0_PHOFF, 0x00);
-	si535x_SendRegister(SI5351a_CLK1_PHOFF, 0x00);
+	static uint_fast8_t skipreset;
+	static uint_fast8_t oldmult;
+	static pllhint_t oldhint = (pllhint_t) -1;
+
+	const pllhint_t hint = si5351a_get_hint(frequency);
+	const uint_fast8_t mult = si5351aSetFrequencyX(0, frequency, hint);	// called from synth_lo1_setfrequ
+
+	if (skipreset == 0 || mult != oldmult || hint != oldhint)
+	{
+		si535x_SendRegister(SI5351a_PLL_RESET, 0x20);	// PLL A reset
+
+		si535x_SendRegister(SI5351a_CLK0_PHOFF, 0x00);
+		si535x_SendRegister(SI5351a_CLK1_PHOFF, si5351a_divider & 0x7F);
+
+		// Finally switch on the CLK1 output (0x4F)
+		// and set the MultiSynth0 input to be PLL A
+		si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x4F | SI5351a_CLK_SRC_PLL_A);
+		si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x4F | SI5351a_CLK_SRC_PLL_A);
+
+		skipreset = 1;
+		oldmult = mult;
+		oldhint = hint;
+	}
 }
 
 static void si5351aInitialize(void)
@@ -404,6 +435,11 @@ static void si5351aInitialize(void)
 	//si535x_SendRegister(SI5351a_CLK5_CONTROL, 0x40);	// D7=CLKx_PDN=1
 	//si535x_SendRegister(SI5351a_CLK6_CONTROL, 0x40);	// D7=CLKx_PDN=1
 	//si535x_SendRegister(SI5351a_CLK7_CONTROL, 0x40);	// D7=CLKx_PDN=1
+
+	// Выключаем все выходы
+	si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x80 | 0x4F | SI5351a_CLK_SRC_PLL_A);
+	si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x80 | 0x4F | SI5351a_CLK_SRC_PLL_A);
+	si535x_SendRegister(SI5351a_CLK2_CONTROL, 0x80 | 0x4F | SI5351a_CLK_SRC_PLL_A);
 
 }
 

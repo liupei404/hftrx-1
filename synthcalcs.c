@@ -445,7 +445,11 @@ void synth_lo1_setfrequ(
 	board_set_scalelo1(om);
 
 #if WITHSI5351AREPLACE
-	si5351aSetFrequencyA(f * od / om);
+	#if WITHSI5351_QUAD_CLK0_CLK1
+		si5351aSetFrequencyABquad(f * od / om);
+	#else /* WITHSI5351_QUAD_CLK0_CLK1 */
+		si5351aSetFrequencyA(f * od / om);
+	#endif /* WITHSI5351_QUAD_CLK0_CLK1 */
 	return;
 #endif /* WITHSI5351AREPLACE */
 
