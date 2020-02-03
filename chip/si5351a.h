@@ -77,8 +77,10 @@
 #define SI5351a_R_DIV_64	0x60
 #define SI5351a_R_DIV_128	0x70
 
-#define SI5351a_CLK_SRC_PLL_A	0x00
-#define SI5351a_CLK_SRC_PLL_B	0x20
+#define SI5351a_CLK0_SRC_PLL_A	0x60	// MultiSynth 0 as the source for CLK0
+
+#define SI5351a_CLK1_SRC_PLL_A	0x40	// Select Multisynth 0 as the source for CLK1.
+#define SI5351a_CLK1_SRC_PLL_B	0x60	// Select Multisynth 1 as the source for CLK1.
 
 #define XTAL_FREQ	dds2ref			// Crystal frequency
 //#define XTAL_FREQ	25000000uL			// Crystal frequency
@@ -270,6 +272,7 @@ static const uint_fast8_t multisynchbase [2] =
 static uint_fast32_t si5351a_divider;
 
 static uint_fast8_t si5351aSetFrequencyX(
+	uint_fast8_t multisynchbase,
 	uint_fast8_t clkout, 
 	uint_fast32_t frequency, 
 	pllhint_t hint
@@ -310,14 +313,14 @@ static uint_fast8_t si5351aSetFrequencyX(
 	// represented by constants SI5351a_R_DIV1 to SI5351a_R_DIV128 (see si5351a.h header file)
 	// If you want to output frequencies below 1MHz, you have to use the 
 	// final R division stage
-	si535x_setupMultisynth(multisynchbase [clkout], si5351a_divider, freqs [hint].outdiv);
+	si535x_setupMultisynth(multisynchbase, si5351a_divider, freqs [hint].outdiv);
 	return mult;
 }
 
 // 
 // Set CLK0 output ON and to the specified frequency
 // Frequency is in the range 1MHz to 150MHz
-// Example: si5351aSetFrequency(10000000);
+// Example: si5351aSetFrequencyA(10000000);
 // will set output CLK0 to 10MHz
 //
 // This example sets up PLL A
@@ -331,14 +334,14 @@ static void si5351aSetFrequencyA(uint_fast32_t frequency)
 	static pllhint_t oldhint = (pllhint_t) -1;
 
 	const pllhint_t hint = si5351a_get_hint(frequency);
-	const uint_fast8_t mult = si5351aSetFrequencyX(0, frequency, hint);	// called from synth_lo1_setfrequ
+	const uint_fast8_t mult = si5351aSetFrequencyX(SI5351a_SYNTH_MS_0, 0, frequency, hint);	// called from synth_lo1_setfrequ
 
 	if (skipreset == 0 || mult != oldmult || hint != oldhint)
 	{
 		si535x_SendRegister(SI5351a_PLL_RESET, 0x20);	// PLL A reset	
 		// Finally switch on the CLK1 output (0x4F)
 		// and set the MultiSynth0 input to be PLL A
-		si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x4F | SI5351a_CLK_SRC_PLL_A);
+		si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x0F | SI5351a_CLK0_SRC_PLL_A);
 
 		skipreset = 1;
 		oldmult = mult;
@@ -354,13 +357,13 @@ static void si5351aSetFrequencyB(uint_fast32_t frequency)
 
 	if (0 == frequency)
 	{
-		si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x80 | 0x4F | SI5351a_CLK_SRC_PLL_B);
+		si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x80 | 0x0F | SI5351a_CLK1_SRC_PLL_B);
 		skipreset = 0;	// запрос на переинициализацию выхода
 		return;
 	}
 
 	const pllhint_t hint = si5351a_get_hint(frequency);
-	const uint_fast8_t mult = si5351aSetFrequencyX(1, frequency, hint);	// called from synth_lo1_setfrequ
+	const uint_fast8_t mult = si5351aSetFrequencyX(SI5351a_SYNTH_MS_1, 1, frequency, hint);	// called from synth_lo1_setfrequ
 
 	// Reset the PLL. This causes a glitch in the output. For small changes to 
 	// the parameters, you don't need to reset the PLL, and there is no glitch
@@ -369,7 +372,7 @@ static void si5351aSetFrequencyB(uint_fast32_t frequency)
 		si535x_SendRegister(SI5351a_PLL_RESET, 0x80);	// PLL B reset	
 		// Finally switch on the CLK1 output (0x4F)
 		// and set the MultiSynth1 input to be PLL B
-		si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x4F | SI5351a_CLK_SRC_PLL_B);
+		si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x0F | SI5351a_CLK1_SRC_PLL_B);
 
 		skipreset = 1;
 		oldmult = mult;
@@ -381,12 +384,13 @@ static void si5351aSetFrequencyB(uint_fast32_t frequency)
 //
 // Set CLK0 output ON and to the specified frequency
 // Frequency is in the range 1MHz to 150MHz
-// Example: si5351aSetFrequency(10000000);
+// Example: si5351aSetFrequencyABquad(10000000);
 // will set output CLK0 to 10MHz
 //
 // This example sets up PLL A
 // and MultiSynth 0
-// and produces the output on CLK0
+// and produces the output on CLK0 and CLK1
+// CLK1 is a quadrature for CLK0
 //
 static void si5351aSetFrequencyABquad(uint_fast32_t frequency)
 {
@@ -395,7 +399,8 @@ static void si5351aSetFrequencyABquad(uint_fast32_t frequency)
 	static pllhint_t oldhint = (pllhint_t) -1;
 
 	const pllhint_t hint = si5351a_get_hint(frequency);
-	const uint_fast8_t mult = si5351aSetFrequencyX(0, frequency, hint);	// called from synth_lo1_setfrequ
+	const uint_fast8_t mult = si5351aSetFrequencyX(SI5351a_SYNTH_MS_0, 0, frequency, hint);	// called from synth_lo1_setfrequ
+	/* const uint_fast8_t mult = */ si5351aSetFrequencyX(SI5351a_SYNTH_MS_1, 1, frequency, hint);	// called from synth_lo1_setfrequ
 
 	if (skipreset == 0 || mult != oldmult || hint != oldhint)
 	{
@@ -406,8 +411,8 @@ static void si5351aSetFrequencyABquad(uint_fast32_t frequency)
 
 		// Finally switch on the CLK1 output (0x4F)
 		// and set the MultiSynth0 input to be PLL A
-		si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x4F | SI5351a_CLK_SRC_PLL_A);
-		si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x4F | SI5351a_CLK_SRC_PLL_A);
+		si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x0F | SI5351a_CLK0_SRC_PLL_A);
+		si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x0F | SI5351a_CLK1_SRC_PLL_A);
 
 		skipreset = 1;
 		oldmult = mult;
@@ -429,17 +434,15 @@ static void si5351aInitialize(void)
 	// and set the MultiSynth0 input to be PLL A
 	//si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x4F | SI5351a_CLK_SRC_PLL_A);
 
-	//si535x_SendRegister(SI5351a_CLK2_CONTROL, 0x40);	// D7=CLKx_PDN=1
-	//si535x_SendRegister(SI5351a_CLK3_CONTROL, 0x40);	// D7=CLKx_PDN=1
-	//si535x_SendRegister(SI5351a_CLK4_CONTROL, 0x40);	// D7=CLKx_PDN=1
-	//si535x_SendRegister(SI5351a_CLK5_CONTROL, 0x40);	// D7=CLKx_PDN=1
-	//si535x_SendRegister(SI5351a_CLK6_CONTROL, 0x40);	// D7=CLKx_PDN=1
-	//si535x_SendRegister(SI5351a_CLK7_CONTROL, 0x40);	// D7=CLKx_PDN=1
-
 	// Выключаем все выходы
-	si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x80 | 0x4F | SI5351a_CLK_SRC_PLL_A);
-	si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x80 | 0x4F | SI5351a_CLK_SRC_PLL_A);
-	si535x_SendRegister(SI5351a_CLK2_CONTROL, 0x80 | 0x4F | SI5351a_CLK_SRC_PLL_A);
+	si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x80);	// D7=CLKx_PDN=1
+	si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x80);	// D7=CLKx_PDN=1
+	si535x_SendRegister(SI5351a_CLK2_CONTROL, 0x80);	// D7=CLKx_PDN=1
+	//si535x_SendRegister(SI5351a_CLK3_CONTROL, 0x80);	// D7=CLKx_PDN=1
+	//si535x_SendRegister(SI5351a_CLK4_CONTROL, 0x80);	// D7=CLKx_PDN=1
+	//si535x_SendRegister(SI5351a_CLK5_CONTROL, 0x80);	// D7=CLKx_PDN=1
+	//si535x_SendRegister(SI5351a_CLK6_CONTROL, 0x80);	// D7=CLKx_PDN=1
+	//si535x_SendRegister(SI5351a_CLK7_CONTROL, 0x80);	// D7=CLKx_PDN=1
 
 }
 

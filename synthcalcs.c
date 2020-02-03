@@ -493,7 +493,9 @@ void synth_lo4_setfreq(
 		f = - f;
 
 #if WITHSI5351AREPLACE
-	si5351aSetFrequencyB(f);
+	#if ! WITHSI5351_QUAD_CLK0_CLK1
+		si5351aSetFrequencyB(f);
+	#endif /* ! WITHSI5351_QUAD_CLK0_CLK1 */
 	return;
 #endif /* WITHSI5351AREPLACE */
 
