@@ -446,7 +446,7 @@ void synth_lo1_setfrequ(
 
 #if WITHSI5351AREPLACE
 	#if WITHSI5351_QUAD_CLK0_CLK1
-		si5351aSetFrequencyABquad(f * od / om);
+		si5351aSetFrequencyABquad(f * od / om);	// CLK0 & CLK1 - квадратурные сигналы гетеродина
 	#else /* WITHSI5351_QUAD_CLK0_CLK1 */
 		si5351aSetFrequencyA(f * od / om);
 	#endif /* WITHSI5351_QUAD_CLK0_CLK1 */
