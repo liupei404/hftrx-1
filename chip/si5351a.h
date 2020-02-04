@@ -88,13 +88,13 @@
 #define SI_CLK_SRC_PLL_B  0x20
 
 
-   si5351_write_reg(SI_CLK0_CONTROL, 0x4C | power0 | SI_CLK_SRC_PLL_A);
+   si535x_SendRegister(SI_CLK0_CONTROL, 0x4C | power0 | SI_CLK_SRC_PLL_A);
 
-    si5351_write_reg(SI_CLK0_PHASE, 0);
+    si535x_SendRegister(SI_CLK0_PHASE, 0);
 
     si5351_setup_msynth_int(SI_SYNTH_MS_1, divider, 0);
 
-    si5351_write_reg(SI_CLK1_CONTROL, 0x4C | power0 | SI_CLK_SRC_PLL_A);
+    si535x_SendRegister(SI_CLK1_CONTROL, 0x4C | power0 | SI_CLK_SRC_PLL_A);
 
  */
 
@@ -371,6 +371,129 @@ static void si5351aSetFrequencyB(uint_fast32_t frequency)
 
 }
 
+#define SI_CLK0_CONTROL 16      // Register definitions
+#define SI_CLK1_CONTROL 17
+#define SI_CLK2_CONTROL 18
+
+#define SI_SYNTH_MS_0   42
+#define SI_SYNTH_MS_1   50
+#define SI_SYNTH_MS_2   58
+#define SI_PLL_RESET    177
+
+#define SI_CLK0_PHASE  165
+#define SI_CLK1_PHASE  166
+#define SI_CLK2_PHASE  167
+
+#define FRAC_DENOM 0xFFFFF
+
+#define SI_CLK_SRC_PLL_A  0x00
+#define SI_CLK_SRC_PLL_B  0x20
+
+
+void si5351_write_regs(uint8_t synth, uint32_t P1, uint32_t P2, uint32_t P3, uint8_t rDiv)
+{
+	i2c_start(SI53xx_I2C_WRITE);
+  i2c_write(synth);
+  i2c_write(((uint8_t*)&P3)[1]);
+  i2c_write((uint8_t)P3);
+  i2c_write((((uint8_t*)&P1)[2] & 0x3) | rDiv);
+  i2c_write(((uint8_t*)&P1)[1]);
+  i2c_write((uint8_t)P1);
+  i2c_write(((P3 & 0x000F0000) >> 12) | ((P2 & 0x000F0000) >> 16));
+  i2c_write(((uint8_t*)&P2)[1]);
+  i2c_write((uint8_t)P2);
+	i2c_waitsend();
+	i2c_stop();
+}
+
+// Set up MultiSynth with mult, num and denom
+// mult is 15..90
+// num is 0..1,048,575 (0xFFFFF)
+// denom is 0..1,048,575 (0xFFFFF)
+//
+void si5351_setup_msynth(uint8_t synth, uint8_t a, uint32_t b, uint32_t c, uint8_t rDiv)
+{
+  uint32_t t = 128*b / c;
+  si5351_write_regs(
+    synth,
+    (uint32_t)(128 * (uint32_t)(a) + t - 512),
+    (uint32_t)(128 * b - c * t),
+    c,
+    rDiv
+  );
+}
+
+
+//
+// Set up MultiSynth with integer divider and R divider
+// R divider is the bit value which is OR'ed onto the appropriate register, it is a #define in si5351a.h
+//
+void si5351_setup_msynth_int(uint8_t synth, uint32_t divider, uint8_t rDiv)
+{
+  // P2 = 0, P3 = 1 forces an integer value for the divider
+  si5351_write_regs(
+    synth,
+    128 * divider - 512,
+    0,
+    1,
+    rDiv
+  );
+}
+
+static void update_freq01_quad(uint_fast32_t freq0, uint8_t* need_reset_pll)
+{
+	const uint_fast32_t xtal_freq = XTAL_FREQ;
+  uint64_t pll_freq;
+  uint8_t mult;
+  uint32_t num;
+  uint32_t divider;
+
+  static uint32_t freq01_div;
+
+  if (freq0 == 0) {
+    //disable_out(0);
+    //disable_out(1);
+    return;
+  }
+
+  if (freq0 >= 7000000) {
+    divider = (900000000 / freq0);
+  } else if (freq0 >= 4000000) {
+    divider = (600000000 / freq0);
+  } else if (freq0 >= 2000000) {
+    // VFO run on freq less than 600MHz. possible unstable
+    // comment this for disable operation below 600MHz VFO (4MHz on out)
+    divider = 0x7F;
+  } else {
+    divider = 0; // disable out on invalid freq
+  }
+  if (divider < 6 || divider > 0x7F) {
+    //disable_out(0);
+    //disable_out(1);
+    return;
+  }
+
+  pll_freq = divider * freq0;
+
+  mult = pll_freq*10 / xtal_freq;
+  num = (pll_freq - (uint64_t)mult*xtal_freq/10)*FRAC_DENOM*10/xtal_freq;
+
+  si5351_setup_msynth(SI5351a_SYNTH_PLL_A, mult, num, FRAC_DENOM, 0);
+
+  if (divider != freq01_div) {
+    si5351_setup_msynth_int(SI_SYNTH_MS_0, divider, 0);
+    si535x_SendRegister(SI_CLK0_CONTROL, 0x4C | SI5351a_IOUT | SI_CLK_SRC_PLL_A);
+    si535x_SendRegister(SI_CLK0_PHASE, 0);
+    si5351_setup_msynth_int(SI_SYNTH_MS_1, divider, 0);
+    si535x_SendRegister(SI_CLK1_CONTROL, 0x4C | SI5351a_IOUT | SI_CLK_SRC_PLL_A);
+    si535x_SendRegister(SI_CLK1_PHASE, divider & 0x7F);
+    freq01_div = divider;
+    *need_reset_pll = 1;
+  }
+}
+
+
+
 //
 // Set CLK0 output ON and to the specified frequency
 // Frequency is in the range 1MHz to 150MHz
@@ -384,6 +507,12 @@ static void si5351aSetFrequencyB(uint_fast32_t frequency)
 //
 static void si5351aSetFrequencyABquad(uint_fast32_t frequency)
 {
+	static uint8_t need_reset_pll = 1;
+	update_freq01_quad(frequency, & need_reset_pll);
+	if (need_reset_pll)
+		si535x_SendRegister(SI_PLL_RESET, 0xA0);
+	return;
+
 	static uint_fast8_t skipreset;
 	static uint_fast8_t oldmult;
 	static pllhint_t oldhint = (pllhint_t) -1;
@@ -410,6 +539,7 @@ static void si5351aSetFrequencyABquad(uint_fast32_t frequency)
 		oldhint = hint;
 	}
 }
+
 
 static void si5351aInitialize(void)
 {
