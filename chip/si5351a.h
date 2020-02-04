@@ -77,10 +77,10 @@
 #define SI5351a_R_DIV_64	0x60
 #define SI5351a_R_DIV_128	0x70
 
-#define SI5351a_CLK0_SRC_PLL_A	0x60	// MultiSynth 0 as the source for CLK0
+#define SI5351a_CLK0_SRC_PLL_A	0x6C	// MultiSynth 0 as the source for CLK0
 
-#define SI5351a_CLK1_SRC_PLL_A	0x40	// Select Multisynth 0 as the source for CLK1.
-#define SI5351a_CLK1_SRC_PLL_B	0x60	// Select Multisynth 1 as the source for CLK1.
+#define SI5351a_CLK1_SRC_PLL_A	0x4C	// Select Multisynth 0 as the source for CLK1.
+#define SI5351a_CLK1_SRC_PLL_B	0x6C	// Select Multisynth 1 as the source for CLK1.
 
 #define XTAL_FREQ	dds2ref			// Crystal frequency
 //#define XTAL_FREQ	25000000uL			// Crystal frequency
@@ -178,22 +178,6 @@ si535x_setupMultisynth(uint_fast8_t synth, uint_fast32_t divider, uint_fast8_t o
 	i2c_stop();	
 }
 
-//
-// Switches off Si5351a output
-// Example: si5351aOutputOff(SI5351a_CLK0_CONTROL);
-// will switch off output CLK0
-//
-/*
-static void
-si5351aOutputOff(uint_fast8_t clk)
-{
-	//si535x__init();
-	
-	si535x_SendRegister(clk, 0x80);		// Refer to SiLabs AN619 to see bit values - 0x80 turns off the output stage
-
-	//si535x__exit();
-}
-*/
 struct FREQ {
   uint8_t plldiv;	// должно быть чётное число Valid Multisynth divider ratios are 4, 6, 8,
   uint8_t outdiv;	// Rx Output Divider code (SI5351a_R_DIV_1..SI5351a_R_DIV_128)
@@ -328,7 +312,7 @@ static void si5351aSetFrequencyA(uint_fast32_t frequency)
 		si535x_SendRegister(SI5351a_PLL_RESET, 0x20);	// PLL A reset	
 		// Finally switch on the CLK1 output (0x4F)
 		// and set the MultiSynth0 input to be PLL A
-		si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x0F | SI5351a_CLK0_SRC_PLL_A);
+		si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x03 | SI5351a_CLK0_SRC_PLL_A);
 
 		skipreset = 1;
 		oldmult = mult;
@@ -344,7 +328,7 @@ static void si5351aSetFrequencyB(uint_fast32_t frequency)
 
 	if (0 == frequency)
 	{
-		si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x80 | 0x0F | SI5351a_CLK1_SRC_PLL_B);
+		si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x80);
 		skipreset = 0;	// запрос на переинициализацию выхода
 		return;
 	}
@@ -359,7 +343,7 @@ static void si5351aSetFrequencyB(uint_fast32_t frequency)
 		si535x_SendRegister(SI5351a_PLL_RESET, 0x80);	// PLL B reset	
 		// Finally switch on the CLK1 output (0x4F)
 		// and set the MultiSynth1 input to be PLL B
-		si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x0F | SI5351a_CLK1_SRC_PLL_B);
+		si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x03 | SI5351a_CLK1_SRC_PLL_B);
 
 		skipreset = 1;
 		oldmult = mult;
@@ -398,8 +382,8 @@ static void si5351aSetFrequencyABquad(uint_fast32_t frequency)
 
 		// Finally switch on the CLK1 output (0x4F)
 		// and set the MultiSynth0 input to be PLL A
-		si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x0F | SI5351a_CLK0_SRC_PLL_A);
-		si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x0F | SI5351a_CLK1_SRC_PLL_A);
+		si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x03 | SI5351a_CLK0_SRC_PLL_A);
+		si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x03 | SI5351a_CLK1_SRC_PLL_A);
 
 		skipreset = 1;
 		oldmult = mult;
