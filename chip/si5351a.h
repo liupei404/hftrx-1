@@ -77,7 +77,28 @@
 #define SI5351a_R_DIV_64	0x60
 #define SI5351a_R_DIV_128	0x70
 
-#define SI5351a_CLK0_SRC_PLL_A	0x6C	// MultiSynth 0 as the source for CLK0
+#define SI5351a_IOUT 0x03
+
+
+/*
+ * https://github.com/andrey-belokon/SyntezSi5351/blob/master/Syntez/si5351a.cpp#L292
+ *
+ #define SI_CLK_SRC_PLL_A  0x00
+
+#define SI_CLK_SRC_PLL_B  0x20
+
+
+   si5351_write_reg(SI_CLK0_CONTROL, 0x4C | power0 | SI_CLK_SRC_PLL_A);
+
+    si5351_write_reg(SI_CLK0_PHASE, 0);
+
+    si5351_setup_msynth_int(SI_SYNTH_MS_1, divider, 0);
+
+    si5351_write_reg(SI_CLK1_CONTROL, 0x4C | power0 | SI_CLK_SRC_PLL_A);
+
+ */
+
+#define SI5351a_CLK0_SRC_PLL_A	0x4C	// MultiSynth 0 as the source for CLK0
 
 #define SI5351a_CLK1_SRC_PLL_A	0x4C	// Select Multisynth 0 as the source for CLK1.
 #define SI5351a_CLK1_SRC_PLL_B	0x6C	// Select Multisynth 1 as the source for CLK1.
@@ -85,8 +106,6 @@
 #define XTAL_FREQ	dds2ref			// Crystal frequency
 //#define XTAL_FREQ	25000000uL			// Crystal frequency
 //#define XTAL_FREQ	27000000uL			// Crystal frequency
-
-
 
 
 //#define SI53xx_I2C_WRITE (0x62 * 2)		// Si5351A-B04486-GT I2C address for writing to the Si5351A - see https://www.silabs.com/internal-apps-management/ClockBuilderDocuments/Si5351A-B04486-GT_datasheet_addendum.pdf
@@ -312,7 +331,7 @@ static void si5351aSetFrequencyA(uint_fast32_t frequency)
 		si535x_SendRegister(SI5351a_PLL_RESET, 0x20);	// PLL A reset	
 		// Finally switch on the CLK1 output (0x4F)
 		// and set the MultiSynth0 input to be PLL A
-		si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x03 | SI5351a_CLK0_SRC_PLL_A);
+		si535x_SendRegister(SI5351a_CLK0_CONTROL, SI5351a_IOUT | SI5351a_CLK0_SRC_PLL_A);
 
 		skipreset = 1;
 		oldmult = mult;
@@ -343,7 +362,7 @@ static void si5351aSetFrequencyB(uint_fast32_t frequency)
 		si535x_SendRegister(SI5351a_PLL_RESET, 0x80);	// PLL B reset	
 		// Finally switch on the CLK1 output (0x4F)
 		// and set the MultiSynth1 input to be PLL B
-		si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x03 | SI5351a_CLK1_SRC_PLL_B);
+		si535x_SendRegister(SI5351a_CLK1_CONTROL, SI5351a_IOUT | SI5351a_CLK1_SRC_PLL_B);
 
 		skipreset = 1;
 		oldmult = mult;
@@ -369,6 +388,7 @@ static void si5351aSetFrequencyABquad(uint_fast32_t frequency)
 	static uint_fast8_t oldmult;
 	static pllhint_t oldhint = (pllhint_t) -1;
 
+	// инициалищируем MS0 и MS1 и PLL_A
 	const pllhint_t hint = si5351a_get_hint(frequency);
 	const uint_fast8_t mult = si5351aSetFrequencyX(SI5351a_SYNTH_MS_0, SI5351a_SYNTH_PLL_A, frequency, hint);	// called from synth_lo1_setfrequ
 	/* const uint_fast8_t mult = */ si5351aSetFrequencyX(SI5351a_SYNTH_MS_1, SI5351a_SYNTH_PLL_B, frequency, hint);	// called from synth_lo1_setfrequ
@@ -382,8 +402,8 @@ static void si5351aSetFrequencyABquad(uint_fast32_t frequency)
 
 		// Finally switch on the CLK1 output (0x4F)
 		// and set the MultiSynth0 input to be PLL A
-		si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x03 | SI5351a_CLK0_SRC_PLL_A);
-		si535x_SendRegister(SI5351a_CLK1_CONTROL, 0x03 | SI5351a_CLK1_SRC_PLL_A);
+		si535x_SendRegister(SI5351a_CLK0_CONTROL, SI5351a_IOUT | SI5351a_CLK0_SRC_PLL_A);
+		si535x_SendRegister(SI5351a_CLK1_CONTROL, SI5351a_IOUT | SI5351a_CLK1_SRC_PLL_A);
 
 		skipreset = 1;
 		oldmult = mult;
@@ -403,7 +423,7 @@ static void si5351aInitialize(void)
 	//si535x_SendRegister(SI5351a_FANOUT, 0x10);	// MS_FANOUT_EN=1
 	// Finally switch on the CLK0 output (0x4F)
 	// and set the MultiSynth0 input to be PLL A
-	//si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x0F | SI5351a_CLK0_SRC_PLL_A);
+	//si535x_SendRegister(SI5351a_CLK0_CONTROL, SI5351a_IOUT | SI5351a_CLK0_SRC_PLL_A);
 
 	// Выключаем все выходы
 	si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x80);	// D7=CLKx_PDN=1
