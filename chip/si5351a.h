@@ -256,24 +256,11 @@ si5351a_get_divider(pllhint_t hint)
 	return freqs [(uint_fast8_t) hint].divider;
 }
 
-
-static const uint_fast8_t pllbase [2] =
-{
-	SI5351a_SYNTH_PLL_A,
-	SI5351a_SYNTH_PLL_B,
-};
-
-static const uint_fast8_t multisynchbase [2] =
-{
-	SI5351a_SYNTH_MS_0,
-	SI5351a_SYNTH_MS_1,
-};
-
 static uint_fast32_t si5351a_divider;
 
 static uint_fast8_t si5351aSetFrequencyX(
 	uint_fast8_t multisynchbase,
-	uint_fast8_t clkout, 
+	uint_fast8_t pllbase,
 	uint_fast32_t frequency, 
 	pllhint_t hint
 	)
@@ -306,7 +293,7 @@ static uint_fast8_t si5351aSetFrequencyX(
 	num = f;						// the actual multiplier is  mult + num / denom
 
 									// Set up PLL B with the calculated multiplication ratio
-	si535x_setupPLL(pllbase [clkout], mult, num, denom);
+	si535x_setupPLL(pllbase, mult, num, denom);
 
 	// Set up MultiSynth divider 1, with the calculated divider. 
 	// The final R division stage can divide by a power of two, from 1..128. 
@@ -334,7 +321,7 @@ static void si5351aSetFrequencyA(uint_fast32_t frequency)
 	static pllhint_t oldhint = (pllhint_t) -1;
 
 	const pllhint_t hint = si5351a_get_hint(frequency);
-	const uint_fast8_t mult = si5351aSetFrequencyX(SI5351a_SYNTH_MS_0, 0, frequency, hint);	// called from synth_lo1_setfrequ
+	const uint_fast8_t mult = si5351aSetFrequencyX(SI5351a_SYNTH_MS_0, SI5351a_SYNTH_PLL_A, frequency, hint);	// called from synth_lo1_setfrequ
 
 	if (skipreset == 0 || mult != oldmult || hint != oldhint)
 	{
@@ -363,7 +350,7 @@ static void si5351aSetFrequencyB(uint_fast32_t frequency)
 	}
 
 	const pllhint_t hint = si5351a_get_hint(frequency);
-	const uint_fast8_t mult = si5351aSetFrequencyX(SI5351a_SYNTH_MS_1, 1, frequency, hint);	// called from synth_lo1_setfrequ
+	const uint_fast8_t mult = si5351aSetFrequencyX(SI5351a_SYNTH_MS_1, SI5351a_SYNTH_PLL_B, frequency, hint);	// called from synth_lo1_setfrequ
 
 	// Reset the PLL. This causes a glitch in the output. For small changes to 
 	// the parameters, you don't need to reset the PLL, and there is no glitch
@@ -399,8 +386,8 @@ static void si5351aSetFrequencyABquad(uint_fast32_t frequency)
 	static pllhint_t oldhint = (pllhint_t) -1;
 
 	const pllhint_t hint = si5351a_get_hint(frequency);
-	const uint_fast8_t mult = si5351aSetFrequencyX(SI5351a_SYNTH_MS_0, 0, frequency, hint);	// called from synth_lo1_setfrequ
-	/* const uint_fast8_t mult = */ si5351aSetFrequencyX(SI5351a_SYNTH_MS_1, 1, frequency, hint);	// called from synth_lo1_setfrequ
+	const uint_fast8_t mult = si5351aSetFrequencyX(SI5351a_SYNTH_MS_0, SI5351a_SYNTH_PLL_A, frequency, hint);	// called from synth_lo1_setfrequ
+	/* const uint_fast8_t mult = */ si5351aSetFrequencyX(SI5351a_SYNTH_MS_1, SI5351a_SYNTH_PLL_B, frequency, hint);	// called from synth_lo1_setfrequ
 
 	if (skipreset == 0 || mult != oldmult || hint != oldhint)
 	{
@@ -432,7 +419,7 @@ static void si5351aInitialize(void)
 	//si535x_SendRegister(SI5351a_FANOUT, 0x10);	// MS_FANOUT_EN=1
 	// Finally switch on the CLK0 output (0x4F)
 	// and set the MultiSynth0 input to be PLL A
-	//si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x4F | SI5351a_CLK_SRC_PLL_A);
+	//si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x0F | SI5351a_CLK0_SRC_PLL_A);
 
 	// Выключаем все выходы
 	si535x_SendRegister(SI5351a_CLK0_CONTROL, 0x80);	// D7=CLKx_PDN=1
