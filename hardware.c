@@ -2713,18 +2713,14 @@ void hardware_adc_initialize(void)
 	#if defined (ADC2)
 
 		RCC->APB2ENR |= (RCC_APB2ENR_ADC1EN | RCC_APB2ENR_ADC2EN);    // Затактировали АЦП
-		__DSB();
-		NVIC_SetVector(ADC1_2_IRQn, (uintptr_t) & ADC1_2_IRQHandler);
-		NVIC_SetPriority(ADC1_2_IRQn, ARM_SYSTEM_PRIORITY);
-		NVIC_EnableIRQ(ADC1_2_IRQn);    //Включаем прерывания с АЦП. Обрабатывает ADC1_2_IRQHandler()
+		(void) RCC->APB2ENR;
+		arm_hardware_set_handler_system(ADC1_2_IRQn, ADC1_2_IRQHandler);
 
 	#else /* defined (ADC2) */
 
 		RCC->APB2ENR |= (RCC_APB2ENR_ADC1EN);    // Затактировали АЦП
-		__DSB();
-		NVIC_SetVector(ADC1_IRQn, (uintptr_t) & ADC1_IRQHandler);
-		NVIC_SetPriority(ADC1_IRQn, ARM_SYSTEM_PRIORITY);
-		NVIC_EnableIRQ(ADC1_IRQn);    //Включаем прерывания с АЦП. Обрабатывает ADC1_IRQHandler()
+		(void) RCC->APB2ENR;
+		arm_hardware_set_handler_system(ADC1_IRQn, ADC1_IRQHandler);
 
 	#endif /* defined (ADC2) */
 
@@ -3331,7 +3327,10 @@ hardware_adc_startonescan(void)
 	if ((adc->CR & ADC_CR_ADSTART) != 0)
 		return;	// еще не закончилось ранее запущеное преобразование
 
+	ASSERT((adc->CR & ADC_CR_JADSTART) == 0);
+	ASSERT((adc->CR & ADC_CR_ADSTART) == 0);
 	ASSERT((adc->CR & (ADC_CR_JADSTART | ADC_CR_ADSTART)) == 0);
+
 	adc->SQR1 = (adc->SQR1 & ~ (ADC_SQR1_L | ADC_SQR1_SQ1)) |
 		0 * ADC_SQR1_L_0 |	//Выбираем преобразование с одного канала. Сканирования нет.
 		adcmap->ch * ADC_SQR1_SQ1_0 |
@@ -8026,8 +8025,8 @@ stm32h7xx_pll_initialize(void)
 {
 #if 1
 	RCC->APB4ENR |= RCC_APB4ENR_SYSCFGEN;     // включить тактирование альтернативных функций
-	__DSB();
-	SYSCFG->CCCSR |= SYSCFG_CCCSR_EN;	// enable i/o compensaion cell
+	(void) RCC->APB4ENR;
+	SYSCFG->CCCSR |= SYSCFG_CCCSR_EN;	// enable i/o compensation cell
 	//while ((SYSCFG->CCCSR & SYSCFG_CCCSR_READY) == 0)
 	//	;
 #endif
@@ -8158,6 +8157,41 @@ stm32h7xx_pll_initialize(void)
 
 	while ((RCC->CR & RCC_CR_PLL1RDY) == 0)	// пока заработает PLL
 		;
+
+
+#if WITHSAICLOCKFROMI2S && ! WITHUSEPLL2
+	#error WITHUSEPLL2 should be defined if WITHSAICLOCKFROMI2S used.
+#endif /* LCDMODE_LTDC && ! WITHUSEPLL3 */
+
+#if WITHUSEPLL2
+	// PLL2 P output used for SAI1, SAI2, SAI3 clocking
+
+	RCC->PLLCKSELR = (RCC->PLLCKSELR & ~ RCC_PLLCKSELR_DIVM2) |
+		((REF2_DIV << RCC_PLLCKSELR_DIVM2_Pos) & RCC_PLLCKSELR_DIVM2) |	// Reference divider - не требуется корректировань число
+		0;
+	//
+	RCC->PLL2DIVR = (RCC->PLL2DIVR & ~ (RCC_PLL2DIVR_N2 | RCC_PLL2DIVR_P2)) |
+		(((REF2_MUL - 1) << RCC_PLL2DIVR_N2_Pos) & RCC_PLL2DIVR_N2) |
+		(((PLL2_DIVP - 1) << RCC_PLL2DIVR_P2_Pos) & RCC_PLL2DIVR_P2) |
+		0;
+	RCC->PLLCFGR = (RCC->PLLCFGR & ~ (RCC_PLLCFGR_DIVR2EN | RCC_PLLCFGR_PLL2RGE | RCC_PLLCFGR_PLL2VCOSEL)) |
+		RCC_PLLCFGR_DIVP2EN |	// This bit can be written only when the PLL2 is disabled (PLL2ON = ‘0’ and PLL3RDY = ‘0’).
+#if PLL2_FREQ >= 150000000uL && PLL2_FREQ <= 420000000uL
+		1 * RCC_PLLCFGR_PLL2VCOSEL |	// 1: Medium VCO range: 150 to 420 MHz
+#else
+		0 * RCC_PLLCFGR_PLL2VCOSEL |	// 0: Wide VCO range: 192 to 836 MHz (default after reset)
+#endif
+		0 * RCC_PLLCFGR_PLL2RGE_0 |	// 00: The PLL2 input (ref3_ck) clock range frequency is between 1 and 2 MHz
+		0;
+
+	RCC->CR |= RCC_CR_PLL2ON;				// Включил PLL2
+
+
+	while ((RCC->CR & RCC_CR_PLL2RDY) == 0)	// пока заработает PLL
+		;
+
+
+#endif /* WITHUSEPLL2 */
 
 #if LCDMODE_LTDC && ! WITHUSEPLL3
 	#error WITHUSEPLL3 should be defined if LCDMODE_LTDC used.

@@ -151,10 +151,10 @@ extern "C" {
 	#define WITHUSENOFU_IN48_INRTS 		0	// 1 - без использования Feature Unit, 0 - с использованием, игнорирование управления громкостью
 	#define WITHUSENOFU_OUT48 			0	// 1 - без использования Feature Unit, 0 - с использованием, игнорирование управления громкостью
 #else /* WITHUAC2 */
-	#define WITHUSENOFU_IN48 			0	// 1 - без использования Feature Unit, 0 - с использованием, игнорирование управления громкостью
-	#define WITHUSENOFU_INRTS 			0	// 1 - без использования Feature Unit, 0 - с использованием, игнорирование управления громкостью
-	#define WITHUSENOFU_IN48_INRTS 		0	// 1 - без использования Feature Unit, 0 - с использованием, игнорирование управления громкостью
-	#define WITHUSENOFU_OUT48 			0	// 1 - без использования Feature Unit, 0 - с использованием, игнорирование управления громкостью
+	#define WITHUSENOFU_IN48 			1	// 1 - без использования Feature Unit, 0 - с использованием, игнорирование управления громкостью
+	#define WITHUSENOFU_INRTS 			1	// 1 - без использования Feature Unit, 0 - с использованием, игнорирование управления громкостью
+	#define WITHUSENOFU_IN48_INRTS 		1	// 1 - без использования Feature Unit, 0 - с использованием, игнорирование управления громкостью
+	#define WITHUSENOFU_OUT48 			1	// 1 - без использования Feature Unit, 0 - с использованием, игнорирование управления громкостью
 #endif /* WITHUAC2 */
 
 // Конфигурация потоков в Input Terminal Descriptor
@@ -447,6 +447,7 @@ modem_frames_decode(
 	);
 
 uint_fast8_t getsampmlemike(INT32P_t * v);			/* получить очередной оцифрованый сэмпл с микрофона */
+uint_fast8_t getsampmlemoni(INT32P_t * v);			/* получить очередной сэмпл для самоконтроля */
 
 FLOAT_t local_log(FLOAT_t x);
 FLOAT_t local_pow(FLOAT_t x, FLOAT_t y);
@@ -492,6 +493,15 @@ void savesamplerecord16SD(int_fast16_t ch0, int_fast16_t ch1); /* to SD CARD */
 void savesamplerecord16uacin(int_fast16_t ch0, int_fast16_t ch1); /* to USB AUDIO */
 unsigned takerecordbuffer(void * * dest);
 void releaserecordbuffer(void * dest);
+/* data to play */
+unsigned savesamplesplay_user(
+	const void * buff,
+	unsigned length
+	);
+void spoolplayfile(void);
+void playwavfile(const char * filename);
+uint_fast8_t isplayfile(void);
+void playwavstop(void);
 
 // Обслуживание модема
 size_t takemodemtxbuffer(uint8_t * * dest);	// Буферы с данными для передачи через модем
@@ -511,6 +521,7 @@ void savesampleout16stereo(int_fast32_t ch0, int_fast32_t ch1);
 void savesampleout32stereo(int_fast32_t ch0, int_fast32_t ch1);
 void savesampleout96stereo(int_fast32_t ch0, int_fast32_t ch1);
 void savesampleout192stereo(int_fast32_t ch0, int_fast32_t ch1);
+void savemoni16stereo(int_fast32_t ch0, int_fast32_t ch1);
 
 #if WITHINTEGRATEDDSP
 	#include "speex\arch.h"
@@ -558,6 +569,7 @@ void board_set_notch_width(uint_fast16_t n);	/* полоса NOTCH фильтр�
 void board_set_notch_on(uint_fast8_t v);	/* включение NOTCH фильтра */
 void board_set_cwedgetime(uint_fast8_t n);	/* Время нарастания/спада огибающей телеграфа при передаче - в 1 мс */
 void board_set_sidetonelevel(uint_fast8_t n);	/* Уровень сигнала самоконтроля в процентах - 0%..100% */
+void board_set_monilevel(uint_fast8_t n);	/* Уровень сигнала самопрослушивания в процентах - 0%..100% */
 void board_set_subtonelevel(uint_fast8_t n);	/* Уровень сигнала CTCSS в процентах - 0%..100% */
 void board_set_amdepth(uint_fast8_t n);		/* Глубина модуляции в АМ - 0..100% */
 void board_set_swapiq(uint_fast8_t v);	/* Поменять местами I и Q сэмплы в потоке RTS96 */
@@ -668,6 +680,10 @@ void uacout_buffer_stop(void);
 void uacout_buffer_save_system(const uint8_t * buff, uint_fast16_t size);
 void uacout_buffer_save_realtime(const uint8_t * buff, uint_fast16_t size);
 
+/* Получение пары (левый и правый) сжмплов для воспроизведения через аудиовыход трансивера.
+ * Возврат 0, если нет ничего для воспроизведения.
+ */
+uint_fast8_t takewavsample(INT32P_t * rv, uint_fast8_t suspend);
 
 #ifdef __cplusplus
 }

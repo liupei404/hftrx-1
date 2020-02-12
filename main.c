@@ -1083,35 +1083,34 @@ enum
 struct agcseti
 {
 	/* параметры АРУ по режимам работы */
-	uint8_t agc_rate;
-	uint8_t agc_t1;
-	uint8_t agc_release10;
-	uint8_t agc_t4;
-	uint8_t agc_thung10;
+	uint8_t rate;
+	uint8_t t1;
+	uint8_t release10;
+	uint8_t t4;
+	uint8_t thung10;
 } ATTRPACKED;	// аттрибут GCC, исключает "дыры" в структуре. Так как в ОЗУ нет копии этой структуры, see also NVRAM_TYPE_BKPSRAM
 
 struct afsetitempl
 {
 	/* начальные значения параметров АРУ */
-	uint_fast8_t agc_rate; // = 10;	// на agc_rate дБ изменения входного сигнала 1 дБ выходного
-	uint_fast8_t agc_t1; // = 120;	// in 1 mS steps. 120=120 mS	charge slow
-	uint_fast8_t agc_release10; // = 5;		// in 0.1 S steps. 0.5 S discharge slow
-	uint_fast8_t agc_t4; // = 50;	// in 1 mS steps. 35=35 mS discharge fast
-	uint_fast8_t agc_thung10; // = 3;	// 0.1 S hung time (0.3 S recomennded).
+	uint8_t rate; 		// = 10;	// на agc_rate дБ изменения входного сигнала 1 дБ выходного
+	uint8_t t1; 		// = 120;	// in 1 mS steps. 120=120 mS	charge slow
+	uint8_t release10; 	// = 5;		// in 0.1 S steps. 0.5 S discharge slow
+	uint8_t t4; 		// = 50;	// in 1 mS steps. 35=35 mS discharge fast
+	uint8_t thung10; 	// = 3;	// 0.1 S hung time (0.3 S recomennded).
 };
 
-#define AGC_RATE_FLAT	(UINT8_MAX - 1)
+#define AGC_RATE_FLAT	192	//(UINT8_MAX - 1)
 #if CTLSTYLE_OLEG4Z_V1
 	/* во всех режимах "плоская" АРУ */
 	#define AGC_RATE_SSB	AGC_RATE_FLAT //(UINT8_MAX - 1)
 	#define AGC_RATE_DIGI	AGC_RATE_FLAT //(UINT8_MAX - 1)
 	#define AGC_RATE_DRM	AGC_RATE_FLAT //(UINT8_MAX - 1)
 #else /* CTLSTYLE_OLEG4Z_V1 */
-	#define AGC_RATE_SSB	(10)
-	#define AGC_RATE_DIGI	(3)
-	#define AGC_RATE_DRM	(20)
+	#define AGC_RATE_SSB	10
+	#define AGC_RATE_DIGI	3
+	#define AGC_RATE_DRM	20
 #endif /* CTLSTYLE_OLEG4Z_V1 */
-
 
 static FLASHMEM const struct afsetitempl aft [AGCSETI_COUNT] =
 {
@@ -1156,6 +1155,18 @@ static FLASHMEM const struct afsetitempl aft [AGCSETI_COUNT] =
 		1,		// agc_thung10
 	},
 };
+
+
+typedef struct agcp_tag
+{
+	uint_fast8_t rate; 		// = 10;	// на gagc_rate дБ изменения входного сигнала 1 дБ выходного
+	uint_fast8_t t1; 		// = 120;	// in 1 mS steps. 120=120 mS	charge slow
+	uint_fast8_t release10; // = 5;		// in 0.1 S steps. 0.5 S discharge slow - время разряда медленной цепи АРУ
+	uint_fast8_t t4; 		// = 50;	// in 1 mS steps. 35=35 mS discharge fast - время разряда быстрой цепи АРУ
+	uint_fast8_t thung10; 	// = 3;	// 0.1 S hung time (0.3 S recomennded).
+} agcp_t;
+
+static agcp_t gagc [AGCSETI_COUNT];
 
 #endif /* WITHIF4DSP */
 
@@ -2482,7 +2493,9 @@ struct nvmap
 	uint16_t gdigiscale;		/* Увеличение усиления при передаче в цифровых режимах 100..300% */
 	uint8_t	gcwedgetime;			/* Время нарастания/спада огибающей телеграфа при передаче - в 1 мс */
 	uint8_t	gsidetonelevel;	/* Уровень сигнала самоконтроля в процентах - 0%..100% */
+	uint8_t gmonilevel;		/* Уровень сигнала самопрослушивания в процентах - 0%..100% */
 	uint8_t	gsubtonelevel;	/* Уровень сигнала CTCSS в процентах - 0%..100% */
+	uint8_t gloopmsg, gloopsec;
 	uint8_t gdigigainmax;	/* диапазон ручной регулировки цифрового усиления - максимальное значение */
 	uint8_t gsquelch;		/* уровень открытия шумоподавителя */
 	uint8_t gvad605;		/* напряжение на AD605 (управление усилением тракта ПЧ */
@@ -3652,6 +3665,18 @@ static uint_fast8_t gkeybeep10 = 880 / 10;	/* озвучка нажатий кл
 	{
 		return - FSADCPOWEROFFSET10;
 	}
+	static uint_fast8_t gloopmsg, gloopsec = 15;
+	static uint_fast8_t loopticks;
+	static const char * const loopnames [] =
+	{
+			"none",
+			"1.wav",
+			"2.wav",
+			"3.wav",
+			"4.wav",
+			"5.wav",
+	};
+	void playhandler(uint8_t code);
 
 	static uint_fast8_t gcwedgetime = 5;			/* Время нарастания/спада огибающей телеграфа при передаче - в 1 мс */
 	static uint_fast8_t gsubtonelevel = 10;	/* Уровень сигнала CTCSS в процентах - 0%..100% */
@@ -3682,6 +3707,8 @@ static uint_fast8_t gkeybeep10 = 880 / 10;	/* озвучка нажатий кл
 		(- 230) + FSADCPOWEROFFSET10,	// с конвертором
 	};
 #endif /* CTLSTYLE_OLEG4Z_V1 */
+	static uint_fast8_t gmonilevel = 15;		/* Уровень сигнала самопрослушивания в процентах - 0%..100% */
+
 	static uint_fast8_t gvad605 = 180; //UINT8_MAX;	/* напряжение на AD605 (управление усилением тракта ПЧ */
 	#if WITHDSPEXTDDC	/* "Воронёнок" с DSP и FPGA */
 		static uint_fast8_t gdither;		/* управление зашумлением в LTC2208 */
@@ -5274,16 +5301,7 @@ getdefaultbandsubmode(
 	return getdefaultsubmode(freq);
 }
 
-#if WITHIF4DSP
 
-	static uint_fast8_t gagc_rate [AGCSETI_COUNT]; // = 10;	// на gagc_rate дБ изменения входного сигнала 1 дБ выходного
-	static uint_fast8_t gagc_t1 [AGCSETI_COUNT]; // = 120;	// in 1 mS steps. 120=120 mS	charge slow
-	static uint_fast8_t gagc_release10 [AGCSETI_COUNT]; // = 5;		// in 0.1 S steps. 0.5 S discharge slow - время разряда медленной цепи АРУ
-	static uint_fast8_t gagc_t4 [AGCSETI_COUNT]; // = 50;	// in 1 mS steps. 35=35 mS discharge fast - время разряда быстрой цепи АРУ
-	static uint_fast8_t gagc_thung10 [AGCSETI_COUNT]; // = 3;	// 0.1 S hung time (0.3 S recomennded).
-
-#endif /* WITHIF4DSP */
- 
 #if CTLSTYLE_RA4YBO || CTLSTYLE_RA4YBO_V1 || CTLSTYLE_RA4YBO_V2 || CTLSTYLE_RA4YBO_V3
 
 	static uint_fast16_t gtxpower [MODE_COUNT];
@@ -5340,12 +5358,14 @@ agcseti_load(void)
 	uint_fast8_t agcseti;
 	for (agcseti = 0; agcseti < AGCSETI_COUNT; ++ agcseti)
 	{
+		agcp_t * const p = & gagc [agcseti];
+		const struct afsetitempl * const t = & aft [agcseti];
 		// параметры АРУ
-		gagc_rate [agcseti] = loadvfy8up(offsetof(struct nvmap, afsets [agcseti].agc_rate), 1, UINT8_MAX - 1, aft [agcseti].agc_rate);
-		gagc_t1 [agcseti] = loadvfy8up(offsetof(struct nvmap, afsets [agcseti].agc_t1), 10, 250, aft [agcseti].agc_t1);
-		gagc_release10 [agcseti] = loadvfy8up(offsetof(struct nvmap, afsets [agcseti].agc_release10), 1, 100, aft [agcseti].agc_release10);
-		gagc_t4 [agcseti] = loadvfy8up(offsetof(struct nvmap, afsets [agcseti].agc_t4), 10, 250, aft [agcseti].agc_t4);
-		gagc_thung10 [agcseti] =	loadvfy8up(offsetof(struct nvmap, afsets [agcseti].agc_thung10), 0, 250, aft [agcseti].agc_thung10);
+		p->rate = loadvfy8up(offsetof(struct nvmap, afsets [agcseti].rate), 1, AGC_RATE_FLAT, t->rate);
+		p->t1 = loadvfy8up(offsetof(struct nvmap, afsets [agcseti].t1), 10, 250, t->t1);
+		p->release10 = loadvfy8up(offsetof(struct nvmap, afsets [agcseti].release10), 1, 100, t->release10);
+		p->t4 = loadvfy8up(offsetof(struct nvmap, afsets [agcseti].t4), 10, 250, t->t4);
+		p->thung10  =	loadvfy8up(offsetof(struct nvmap, afsets [agcseti].thung10), 0, 250, t->thung10);
 	}
 }
 
@@ -7815,11 +7835,11 @@ updateboard(
 			#endif /* WITHNOTCHFREQ */
 			#if WITHIF4DSP
 				const uint_fast8_t agcseti = pamodetempl->agcseti;
-				board_set_agcrate(agcseti == AGCSETI_FLAT ? UINT8_MAX : gagc_rate [agcseti]);			/* на n децибел изменения входного сигнала 1 дБ выходного. UINT8_MAX - "плоская" АРУ */
-				board_set_agc_t1(gagc_t1 [agcseti]);
-				board_set_agc_t2(gagc_release10 [agcseti]);		// время разряда медленной цепи АРУ
-				board_set_agc_t4(gagc_t4 [agcseti]);			// время разряда быстрой цепи АРУ
-				board_set_agc_thung(gagc_thung10 [agcseti]);	// hold time (hung time) in 0.1 sec
+				board_set_agcrate(agcseti == AGCSETI_FLAT ? UINT8_MAX : gagc [agcseti].rate);			/* на n децибел изменения входного сигнала 1 дБ выходного. UINT8_MAX - "плоская" АРУ */
+				board_set_agc_t1(gagc [agcseti].t1);
+				board_set_agc_t2(gagc [agcseti].release10);		// время разряда медленной цепи АРУ
+				board_set_agc_t4(gagc [agcseti].t4);			// время разряда быстрой цепи АРУ
+				board_set_agc_thung(gagc [agcseti].thung10);	// hold time (hung time) in 0.1 sec
 				board_set_squelch(gsquelch.value);
 			#endif /* WITHIF4DSP */
 			} /* tx == 0 */
@@ -8056,6 +8076,7 @@ updateboard(
 
 		board_set_cwedgetime(gcwedgetime);	/* Время нарастания/спада огибающей телеграфа при передаче - в 1 мс */
 		board_set_sidetonelevel(gsidetonelevel);	/* Уровень сигнала самоконтроля в процентах - 0%..100% */
+		board_set_monilevel(gmonilevel);	/* Уровень сигнала самопрослушивания в процентах - 0%..100% */
 		#if WITHSPECTRUMWF
 			board_set_fillspect(gfillspect);	/* заливать заполнением площадь под графиком спектра */
 			board_set_topdb(gtopdb);		/* верхний предел FFT */
@@ -12098,6 +12119,9 @@ processmessages(uint_fast8_t * kbch, uint_fast8_t * kbready, uint_fast8_t inmenu
 #if WITHUSEAUDIOREC
 		sdcardbgprocess();
 #endif /* WITHUSEAUDIOREC */
+#if WITHWAVPLAYER || WITHSENDWAV
+		spoolplayfile();
+#endif /* WITHWAVPLAYER || WITHSENDWAV */
 #if WITHLCDBACKLIGHT || WITHKBDBACKLIGHT
 		// обработать запрос на обновление состояния аппаратуры из user mode программы
 		if (dimmflagch != 0)
@@ -12135,6 +12159,16 @@ processmessages(uint_fast8_t * kbch, uint_fast8_t * kbready, uint_fast8_t inmenu
 		return;
 	
 	case MSGT_1SEC:
+#if WITHWAVPLAYER || WITHSENDWAV
+		if (gloopmsg > 0)
+		{
+			if (++ loopticks >= gloopsec)
+			{
+				loopticks = 0;
+				playhandler(gloopmsg);
+			}
+		}
+#endif /* WITHWAVPLAYER || WITHSENDWAV */
 #if WITHLCDBACKLIGHT || WITHKBDBACKLIGHT
 		if (dimmtime == 0)
 		{
@@ -12252,6 +12286,12 @@ processtxrequest(void)
 #endif	/* WITHCAT */
 		txreq = 1;
 	}
+#if WITHSENDWAV
+	if (isplayfile())
+	{
+		txreq = 1;
+	}
+#endif /* WITHSENDWAV */
 #if WITHBEACON	
 	if (beacon_get_ptt())
 	{
@@ -13831,8 +13871,37 @@ filter_t fi_2p0_455 =	// strFlash2p0
 		& gsidetonelevel,
 		getzerobase, /* складывается со смещением и отображается */
 	},
+	{
+		"MONI LVL", 7, 0, 0,	ISTEP1,		/* Select the monitoring sound output level.. */
+		ITEM_VALUE,
+		0, 100,
+		offsetof(struct nvmap, gmonilevel),	/* Уровень сигнала самопрослушивания в процентах - 0%..100% */
+		NULL,
+		& gmonilevel,
+		getzerobase, /* складывается со смещением и отображается */
+	},
 #endif /* WITHIF4DSP */
 #if WITHTX && WITHIF4DSP
+#if WITHWAVPLAYER || WITHSENDWAV
+	{
+		"LOOP MSG", 7, 0, 0,	ISTEP1,		/* Select the monitoring sound output level.. */
+		ITEM_VALUE,
+		0, (sizeof loopnames / sizeof loopnames [0]) - 1,
+		offsetof(struct nvmap, gloopmsg),	/* Уровень сигнала самопрослушивания в процентах - 0%..100% */
+		NULL,
+		& gloopmsg,
+		getzerobase, /* складывается со смещением и отображается */
+	},
+	{
+		"LOOP SEC", 7, 0, 0,	ISTEP1,		/* Select the monitoring sound output level.. */
+		ITEM_VALUE,
+		15, 240,
+		offsetof(struct nvmap, gloopsec),	/* Уровень сигнала самопрослушивания в процентах - 0%..100% */
+		NULL,
+		& gloopsec,
+		getzerobase, /* складывается со смещением и отображается */
+	},
+#endif /* WITHWAVPLAYER || WITHSENDWAV */
 	#if WITHAFCODEC1HAVELINEINLEVEL	/* кодек имеет управление усилением с линейного входа */
 	{
 		"LINE LVL", 7, 0, 0,	ISTEP1,		/* подстройка усиления с линейного входа через меню. */
@@ -14094,46 +14163,46 @@ filter_t fi_2p0_455 =	// strFlash2p0
 	{
 		"AGC RATE", 7, 0, 0,	ISTEP1,		/* подстройка параметра АРУ через меню. */
 		ITEM_VALUE | ITEM_NOINITNVRAM,	/* значение этого пункта не используется при начальной инициализации NVRAM */
-		1, 80, 
-		offsetof(struct nvmap, afsets [AGCSETI_SSB].agc_rate),	/* На N децибел изменения входного сигнала происходит 1 дБ выходного */
+		1, AGC_RATE_FLAT,
+		offsetof(struct nvmap, afsets [AGCSETI_SSB].rate),	/* На N децибел изменения входного сигнала происходит 1 дБ выходного */
 		NULL,
-		& gagc_rate [AGCSETI_SSB],
+		& gagc [AGCSETI_SSB].rate,
 		getzerobase, /* складывается со смещением и отображается */
 	},
 	{
 		"AGC HUNG", 6, 1, 0,	ISTEP1,		/* подстройка параметра АРУ (время удержания медленной цепи) через меню. */
 		ITEM_VALUE | ITEM_NOINITNVRAM,	/* значение этого пункта не используется при начальной инициализации NVRAM */
 		0, 250, 
-		offsetof(struct nvmap, afsets [AGCSETI_SSB].agc_thung10),	/* время удержания медленной цепи АРУ */
+		offsetof(struct nvmap, afsets [AGCSETI_SSB].thung10),	/* время удержания медленной цепи АРУ */
 		NULL,
-		& gagc_thung10 [AGCSETI_SSB],
+		& gagc [AGCSETI_SSB].thung10,
 		getzerobase, /* складывается со смещением и отображается */
 	},
 	{
 		"AGC T1  ", 7, 0, 0,	ISTEP10,		/* подстройка параметра АРУ (время срабатывания медленной цепи) через меню. */
 		ITEM_VALUE | ITEM_NOINITNVRAM,	/* значение этого пункта не используется при начальной инициализации NVRAM */
 		10, 250, 
-		offsetof(struct nvmap, afsets [AGCSETI_SSB].agc_t1),	/* время срабатывания медленной цепи АРУ */
+		offsetof(struct nvmap, afsets [AGCSETI_SSB].t1),	/* время срабатывания медленной цепи АРУ */
 		NULL,
-		& gagc_t1 [AGCSETI_SSB],
+		& gagc [AGCSETI_SSB].t1,
 		getzerobase, /* складывается со смещением и отображается */
 	},
 	{
 		"AGC T2  ", 6, 1, 0,	ISTEP1,		/* подстройка параметра АРУ (время разряда медленной цепи) через меню. */
 		ITEM_VALUE | ITEM_NOINITNVRAM,	/* значение этого пункта не используется при начальной инициализации NVRAM */
 		1, 100, 
-		offsetof(struct nvmap, afsets [AGCSETI_SSB].agc_release10),	/* время разряда медленной цепи АРУ */
+		offsetof(struct nvmap, afsets [AGCSETI_SSB].release10),	/* время разряда медленной цепи АРУ */
 		NULL,
-		& gagc_release10 [AGCSETI_SSB],
+		& gagc [AGCSETI_SSB].release10,
 		getzerobase, /* складывается со смещением и отображается */
 	},
 	{
 		"AGC T4  ", 7, 0, 0,	ISTEP10,		/* подстройка параметра АРУ (время разряда быстрой цепи) через меню. */
 		ITEM_VALUE | ITEM_NOINITNVRAM,	/* значение этого пункта не используется при начальной инициализации NVRAM */
 		10, 250, 
-		offsetof(struct nvmap, afsets [AGCSETI_SSB].agc_t4),	/* время разряда быстрой цепи АРУ */
+		offsetof(struct nvmap, afsets [AGCSETI_SSB].t4),	/* время разряда быстрой цепи АРУ */
 		NULL,
-		& gagc_t4 [AGCSETI_SSB],
+		& gagc [AGCSETI_SSB].t4,
 		getzerobase, /* складывается со смещением и отображается */
 	},
 #if ! WITHFLATMENU
@@ -14150,46 +14219,46 @@ filter_t fi_2p0_455 =	// strFlash2p0
 	{
 		"AGC RATE", 7, 0, 0,	ISTEP1,		/* подстройка параметра АРУ через меню. */
 		ITEM_VALUE | ITEM_NOINITNVRAM,	/* значение этого пункта не используется при начальной инициализации NVRAM */
-		1, 80, 
-		offsetof(struct nvmap, afsets [AGCSETI_CW].agc_rate),	/* На N децибел изменения входного сигнала происходит 1 дБ выходного */
+		1, AGC_RATE_FLAT,
+		offsetof(struct nvmap, afsets [AGCSETI_CW].rate),	/* На N децибел изменения входного сигнала происходит 1 дБ выходного */
 		NULL,
-		& gagc_rate [AGCSETI_CW],
+		& gagc [AGCSETI_CW].rate,
 		getzerobase, /* складывается со смещением и отображается */
 	},
 	{
 		"AGC HUNG", 6, 1, 0,	ISTEP1,		/* подстройка параметра АРУ (время удержания медленной цепи) через меню. */
 		ITEM_VALUE | ITEM_NOINITNVRAM,	/* значение этого пункта не используется при начальной инициализации NVRAM */
 		0, 250, 
-		offsetof(struct nvmap, afsets [AGCSETI_CW].agc_thung10),	/* время удержания медленной цепи АРУ */
+		offsetof(struct nvmap, afsets [AGCSETI_CW].thung10),	/* время удержания медленной цепи АРУ */
 		NULL,
-		& gagc_thung10 [AGCSETI_CW],
+		& gagc [AGCSETI_CW].thung10,
 		getzerobase, /* складывается со смещением и отображается */
 	},
 	{
 		"AGC T1  ", 7, 0, 0,	ISTEP10,		/* подстройка параметра АРУ (время срабатывания медленной цепи) через меню. */
 		ITEM_VALUE | ITEM_NOINITNVRAM,	/* значение этого пункта не используется при начальной инициализации NVRAM */
 		10, 250, 
-		offsetof(struct nvmap, afsets [AGCSETI_CW].agc_t1),	/* время срабатывания медленной цепи АРУ */
+		offsetof(struct nvmap, afsets [AGCSETI_CW].t1),	/* время срабатывания медленной цепи АРУ */
 		NULL,
-		& gagc_t1 [AGCSETI_CW],
+		& gagc [AGCSETI_CW].t1,
 		getzerobase, /* складывается со смещением и отображается */
 	},
 	{
 		"AGC T2  ", 6, 1, 0,	ISTEP1,		/* подстройка параметра АРУ (время разряда медленной цепи) через меню. */
 		ITEM_VALUE | ITEM_NOINITNVRAM,	/* значение этого пункта не используется при начальной инициализации NVRAM */
 		1, 100, 
-		offsetof(struct nvmap, afsets [AGCSETI_CW].agc_release10),	/* время разряда медленной цепи АРУ */
+		offsetof(struct nvmap, afsets [AGCSETI_CW].release10),	/* время разряда медленной цепи АРУ */
 		NULL,
-		& gagc_release10 [AGCSETI_CW],
+		& gagc [AGCSETI_CW].release10,
 		getzerobase, /* складывается со смещением и отображается */
 	},
 	{
 		"AGC T4  ", 7, 0, 0,	ISTEP10,		/* подстройка параметра АРУ (время разряда быстрой цепи) через меню. */
 		ITEM_VALUE | ITEM_NOINITNVRAM,	/* значение этого пункта не используется при начальной инициализации NVRAM */
 		10, 250, 
-		offsetof(struct nvmap, afsets [AGCSETI_CW].agc_t4),	/* время разряда быстрой цепи АРУ */
+		offsetof(struct nvmap, afsets [AGCSETI_CW].t4),	/* время разряда быстрой цепи АРУ */
 		NULL,
-		& gagc_t4 [AGCSETI_CW],
+		& gagc [AGCSETI_CW].t4,
 		getzerobase, /* складывается со смещением и отображается */
 	},
 #if ! WITHFLATMENU
@@ -14206,46 +14275,46 @@ filter_t fi_2p0_455 =	// strFlash2p0
 	{
 		"AGC RATE", 7, 0, 0,	ISTEP1,		/* подстройка параметра АРУ через меню. */
 		ITEM_VALUE | ITEM_NOINITNVRAM,	/* значение этого пункта не используется при начальной инициализации NVRAM */
-		1, 80, 
-		offsetof(struct nvmap, afsets [AGCSETI_DIGI].agc_rate),	/* На N децибел изменения входного сигнала происходит 1 дБ выходного */
+		1, AGC_RATE_FLAT,
+		offsetof(struct nvmap, afsets [AGCSETI_DIGI].rate),	/* На N децибел изменения входного сигнала происходит 1 дБ выходного */
 		NULL,
-		& gagc_rate [AGCSETI_DIGI],
+		& gagc [AGCSETI_DIGI].rate,
 		getzerobase, /* складывается со смещением и отображается */
 	},
 	{
 		"AGC HUNG", 6, 1, 0,	ISTEP1,		/* подстройка параметра АРУ (время удержания медленной цепи) через меню. */
 		ITEM_VALUE | ITEM_NOINITNVRAM,	/* значение этого пункта не используется при начальной инициализации NVRAM */
 		0, 250, 
-		offsetof(struct nvmap, afsets [AGCSETI_DIGI].agc_thung10),	/* время удержания медленной цепи АРУ */
+		offsetof(struct nvmap, afsets [AGCSETI_DIGI].thung10),	/* время удержания медленной цепи АРУ */
 		NULL,
-		& gagc_thung10 [AGCSETI_DIGI],
+		& gagc [AGCSETI_DIGI].thung10,
 		getzerobase, /* складывается со смещением и отображается */
 	},
 	{
 		"AGC T1  ", 7, 0, 0,	ISTEP10,		/* подстройка параметра АРУ (время срабатывания медленной цепи) через меню. */
 		ITEM_VALUE | ITEM_NOINITNVRAM,	/* значение этого пункта не используется при начальной инициализации NVRAM */
 		10, 250, 
-		offsetof(struct nvmap, afsets [AGCSETI_DIGI].agc_t1),	/* время срабатывания медленной цепи АРУ */
+		offsetof(struct nvmap, afsets [AGCSETI_DIGI].t1),	/* время срабатывания медленной цепи АРУ */
 		NULL,
-		& gagc_t1 [AGCSETI_DIGI],
+		& gagc [AGCSETI_DIGI].t1,
 		getzerobase, /* складывается со смещением и отображается */
 	},
 	{
 		"AGC T2  ", 6, 1, 0,	ISTEP1,		/* подстройка параметра АРУ (время разряда медленной цепи) через меню. */
 		ITEM_VALUE | ITEM_NOINITNVRAM,	/* значение этого пункта не используется при начальной инициализации NVRAM */
 		1, 100, 
-		offsetof(struct nvmap, afsets [AGCSETI_DIGI].agc_release10),	/* время разряда медленной цепи АРУ */
+		offsetof(struct nvmap, afsets [AGCSETI_DIGI].release10),	/* время разряда медленной цепи АРУ */
 		NULL,
-		& gagc_release10 [AGCSETI_DIGI],
+		& gagc [AGCSETI_DIGI].release10,
 		getzerobase, /* складывается со смещением и отображается */
 	},
 	{
 		"AGC T4  ", 7, 0, 0,	ISTEP10,		/* подстройка параметра АРУ (время разряда быстрой цепи) через меню. */
 		ITEM_VALUE | ITEM_NOINITNVRAM,	/* значение этого пункта не используется при начальной инициализации NVRAM */
 		10, 250, 
-		offsetof(struct nvmap, afsets [AGCSETI_DIGI].agc_t4),	/* время разряда быстрой цепи АРУ */
+		offsetof(struct nvmap, afsets [AGCSETI_DIGI].t4),	/* время разряда быстрой цепи АРУ */
 		NULL,
-		& gagc_t4 [AGCSETI_DIGI],
+		& gagc [AGCSETI_DIGI].t4,
 		getzerobase, /* складывается со смещением и отображается */
 	},
 #endif /* WITHIF4DSP */
@@ -15068,7 +15137,6 @@ void display_multilinemenu_block_groups(uint_fast8_t x, uint_fast8_t y, void * p
 	uint_fast16_t selected_group_left_margin; // первый элемент группы
 	uint_fast16_t el;
 	multimenuwnd_t window;
-	gridparams_t z;
 
 	display2_getmultimenu(& window);
 
@@ -15094,8 +15162,11 @@ void display_multilinemenu_block_groups(uint_fast8_t x, uint_fast8_t y, void * p
 	index_groups = 0;
 	const uint_fast16_t menu_block_scroll_offset_groups = window.multilinemenu_max_rows * (selected_group_index / window.multilinemenu_max_rows);
 
+#if DSTYLE_G_X800_Y480
+	gridparams_t z;
 	display2_getgridparams(& z);
 	display2_clear_menu_bk(x - 1, y, x, z.gy2);
+#endif
 
 	// выводим на экран блок с параметрами
 	for (el = 0; el < MENUROW_COUNT; el ++)
@@ -15129,7 +15200,6 @@ void display_multilinemenu_block_params(uint_fast8_t x, uint_fast8_t y, void * p
 	uint_fast16_t selected_group_right_margin; // последний элемент группы
 	uint_fast16_t el;
 	multimenuwnd_t window;
-	gridparams_t z;
 
 	display2_getmultimenu(& window);
 
@@ -15160,8 +15230,11 @@ void display_multilinemenu_block_params(uint_fast8_t x, uint_fast8_t y, void * p
 	index_params = 0;
 	const uint_fast16_t menu_block_scroll_offset_params = window.multilinemenu_max_rows * (selected_params_index / window.multilinemenu_max_rows);
 
+#if DSTYLE_G_X800_Y480
+	gridparams_t z;
 	display2_getgridparams(& z);
 	display2_clear_menu_bk(x - 1, y, x, z.gy2);
+#endif
 
 	// выводим на экран блок с параметрами
 	for (el = 0; el < MENUROW_COUNT; el ++)
@@ -15184,11 +15257,15 @@ void display_multilinemenu_block_params(uint_fast8_t x, uint_fast8_t y, void * p
 				display_at_P(x - 1, y_position_params, PSTR(">"));
 			}
 			display_menu_lblng(x, y_position_params, (void *) mv); // название редактируемого параметра
-			display_at(x + 8, y_position_params, "                    ");
+#if DSTYLE_G_X800_Y480
+			display_at(x + 8, y_position_params, "           ");
+#endif
 			y_position_params += window.ystep;
 		}
 	}
+#if DSTYLE_G_X800_Y480
 	display2_clear_menu_bk(x, y_position_params, z.gx2, z.gy2);
+#endif
 }
 // Отображение многострочного меню для больших экранов (значения)
 void display_multilinemenu_block_vals(uint_fast8_t x, uint_fast8_t y, void * pv)
@@ -15590,8 +15667,13 @@ modifysettings(
 					#if defined (RTC1_TYPE)
 						getstamprtc();
 					#endif /* defined (RTC1_TYPE) */
+#if !DSTYLE_G_X800_Y480
+						display2_bgreset();		/* возможно уже с новой цветовой схемой */
+#endif
 						modifysettings(first, last, ITEM_VALUE, mp->qnvram, exitkey, byname);
-
+#if !DSTYLE_G_X800_Y480
+						display2_bgreset();		/* возможно уже с новой цветовой схемой */
+#endif
 						display_menuitemlabel((void *) mp, byname);
 						display_menuitemvalue((void *) mp);
 						display_redrawbars(1, 1);		/* обновление динамической части отображения - обновление S-метра или SWR-метра и volt-метра. */
@@ -15635,7 +15717,10 @@ modifysettings(
 				if (posnvram != MENUNONVRAM)
 					save_i8(posnvram, menupos);	/* сохраняем номер пункта меню, с которым работаем */
 #endif /* (NVRAM_TYPE != NVRAM_TYPE_CPUEEPROM) */
-				
+
+#if !DSTYLE_G_X800_Y480
+				display2_bgreset();		/* возможно уже с новой цветовой схемой */
+#endif
 #if WITHDEBUG
 				debug_printf_P(PSTR("menu: ")); debug_printf_P(mp->qlabel); debug_printf_P(PSTR("\n")); 
 #endif /* WITHDEBUG */
@@ -16347,6 +16432,16 @@ process_key_menuset_common(uint_fast8_t kbch)
 	}
 }
 
+#if WITHWAVPLAYER || WITHSENDWAV
+void playhandler(uint8_t code)
+{
+	if (code >= 1 && code < (sizeof loopnames / sizeof loopnames [0]))
+		playwavfile(loopnames [code]);
+	else
+		playwavstop();
+
+}
+#endif /* WITHWAVPLAYER || WITHSENDWAV */
 
 /* возврат ненуля - было какое-либо нажатие,
 	требуется обновление дисплея и состояния аппаратуры */
@@ -16469,6 +16564,48 @@ processkeyboard(uint_fast8_t kbch)
 	default:
 		break;
 	}
+
+#if WITHWAVPLAYER || WITHSENDWAV
+	switch (kbch)
+	{
+	case KBD_CODE_PLAYFILE1:
+		playhandler(1);
+		return 1;	/* клавиша уже обработана */
+	case KBD_CODE_PLAYFILE2:
+		playhandler(2);
+		return 1;	/* клавиша уже обработана */
+	case KBD_CODE_PLAYFILE3:
+		playhandler(3);
+		return 1;	/* клавиша уже обработана */
+	case KBD_CODE_PLAYFILE4:
+		playhandler(4);
+		return 1;	/* клавиша уже обработана */
+	case KBD_CODE_PLAYFILE5:
+		playhandler(5);
+		return 1;	/* клавиша уже обработана */
+	case KBD_CODE_PLAYSTOP:
+		playwavstop();
+		return 1;	/* клавиша уже обработана */
+#if ! WITHPOTAFGAIN
+	case KBD_CODE_PLAYLOUD:	// громче
+		if (afgain1.value != BOARD_AFGAIN_MAX)
+		{
+			afgain1.value = calc_next(afgain1.value, BOARD_AFGAIN_MIN, BOARD_AFGAIN_MAX);
+			save_i8(offsetof(struct nvmap, afgain1), afgain1.value);
+			updateboard(1, 0);
+		}
+		return 1;
+	case KBD_CODE_PLAYQUITE:	// тише
+		if (afgain1.value != BOARD_AFGAIN_MIN)
+		{
+			afgain1.value = calc_prev(afgain1.value, BOARD_AFGAIN_MIN, BOARD_AFGAIN_MAX);
+			save_i8(offsetof(struct nvmap, afgain1), afgain1.value);
+			updateboard(1, 0);
+		}
+		return 1;
+#endif /* ! WITHPOTAFGAIN */
+	}
+#endif /* WITHWAVPLAYER */
 
 	uint_fast8_t processed = 0;
 #if 1
@@ -17448,6 +17585,26 @@ hamradio_main_step(void)
 				nrotate2 = 0;
 				display_redrawfreqmodesbars(0);			/* Обновление дисплея - всё, включая частоту */
 			}
+	#if WITHDEBUG
+			{
+				/* здесь можно добавить обработку каких-либо команд с debug порта */
+				char c;
+				if (dbg_getchar(& c))
+				{
+					switch (c)
+					{
+					default:
+						break;
+		#if WITHWAVPLAYER || WITHSENDWAV
+					case 'p':
+						debug_printf_P(PSTR("Play test file\n"));
+						playwavfile("1.wav");
+						break;
+		#endif /* WITHWAVPLAYER */
+					}
+				}
+			}
+	#endif /* WITHDEBUG */
 	#if WITHKEYBOARD
 			if (kbready != 0)
 			{
