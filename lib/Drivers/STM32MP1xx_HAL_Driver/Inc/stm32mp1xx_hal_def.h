@@ -121,26 +121,33 @@ typedef enum
 /* Macro to get variable aligned on 4-bytes, for __ICCARM__ the directive "#pragma data_alignment=4" must be used instead */
 #if defined   (__GNUC__)        /* GNU Compiler */
   #ifndef __ALIGN_END
-	#define __ALIGN_END    __attribute__ ((aligned (64U)))
-	#define __ALIGN4k_END    __attribute__ ((aligned (64U)))
+#define __ALIGN_END    __attribute__ ((aligned (4U)))
   #endif /* __ALIGN_END */
   #ifndef __ALIGN_BEGIN  
-	#define __ALIGN_BEGIN
-	#define __ALIGN4k_BEGIN
+    #define __ALIGN_BEGIN
   #endif /* __ALIGN_BEGIN */
 #else
   #ifndef __ALIGN_END
-	#define __ALIGN_END
-	#define __ALIGN4k_END
+    #define __ALIGN_END
   #endif /* __ALIGN_END */
   #ifndef __ALIGN_BEGIN      
     #if defined   (__CC_ARM)      /* ARM Compiler */
-		#define __ALIGN_BEGIN    __align(64U)
-		#define __ALIGN4k_BEGIN    __align(64U)
+#define __ALIGN_BEGIN    __align(4U)
     #elif defined (__ICCARM__)    /* IAR Compiler */
       #define __ALIGN_BEGIN 
     #endif /* __CC_ARM */
   #endif /* __ALIGN_BEGIN */
+#endif /* __GNUC__ */
+
+/* Macro to get variable aligned on 32-bytes,needed for cache maintenance purpose */
+#if defined   (__GNUC__)        /* GNU Compiler */
+#define ALIGN_32BYTES(buf)  buf __attribute__ ((aligned (32)))
+#elif defined (__ICCARM__)    /* IAR Compiler */
+#define ALIGN_32BYTES(buf) _Pragma("data_alignment=32") buf
+#elif defined (__ARMCC_VERSION) && (__ARMCC_VERSION >= 6010050)
+#define ALIGN_32BYTES(buf) __ALIGNED(32) buf
+#elif defined   (__CC_ARM)      /* ARM Compiler */
+#define ALIGN_32BYTES(buf) __align(32) buf
 #endif /* __GNUC__ */
 
 /** 

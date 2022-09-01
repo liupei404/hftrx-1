@@ -63,9 +63,9 @@ USBD_StatusTypeDef USBD_Get_USB_Status(HAL_StatusTypeDef hal_status);
 
 
 /* PCD Handle Structure */
-__ALIGN4k_BEGIN PCD_HandleTypeDef hpcd_USB_OTG __ALIGN4k_END;
+__ALIGN_BEGIN PCD_HandleTypeDef hpcd_USB_OTG __ALIGN_END;
 /* USB Device Core handle declaration */
-static __ALIGN4k_BEGIN USBD_HandleTypeDef hUsbDevice __ALIGN4k_END;
+static __ALIGN_BEGIN USBD_HandleTypeDef hUsbDevice __ALIGN_END;
 
 
 /* USER CODE BEGIN 1 */
@@ -1437,7 +1437,7 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev)
 		hpcd_USB_OTG.Init.dma_enable = DISABLE;
 	#endif /* WITHUSBDEV_DMAENABLE */
 	#if WITHUSBDEV_HIGHSPEEDPHYC
-		hpcd_USB_OTG.Init.phy_itface = USB_OTG_HS_EMBEDDED_PHY;
+		hpcd_USB_OTG.Init.phy_itface = USB_OTG_EMBEDDED_PHY;
 	#elif WITHUSBDEV_HIGHSPEEDULPI
 		hpcd_USB_OTG.Init.phy_itface = USB_OTG_ULPI_PHY;
 	#else
