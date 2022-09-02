@@ -130,11 +130,11 @@ typedef enum
     #define __ALIGN_BEGIN
   #endif
   #ifndef __ALIGN_END
-    #define __ALIGN_END      __attribute__ ((aligned (4)))
+    #define __ALIGN_END      __attribute__ ((aligned (32)))
   #endif
 #elif defined ( __GNUC__ ) && !defined (__CC_ARM) /* GNU Compiler */
   #ifndef __ALIGN_END
-    #define __ALIGN_END    __attribute__ ((aligned (4)))
+    #define __ALIGN_END    __attribute__ ((aligned (32)))
   #endif /* __ALIGN_END */
   #ifndef __ALIGN_BEGIN
     #define __ALIGN_BEGIN
@@ -145,7 +145,7 @@ typedef enum
   #endif /* __ALIGN_END */
   #ifndef __ALIGN_BEGIN
     #if defined   (__CC_ARM)      /* ARM Compiler V5 */
-      #define __ALIGN_BEGIN    __align(4)
+      #define __ALIGN_BEGIN    __align(32)
     #elif defined (__ICCARM__)    /* IAR Compiler */
       #define __ALIGN_BEGIN
     #endif /* __CC_ARM */
