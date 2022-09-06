@@ -930,7 +930,7 @@ hwacc_fillrect_u16(
 
 	ASSERT((G2D_MIXER->G2D_MIXER_CTL & (1uL << 31)) == 0);
 
-	const uint_fast32_t c24 = COLOR24(COLOR565_R(color), COLOR565_G(color), COLOR565_B(color));
+	const uint_fast32_t c24 = COLOR24(COLORMAIN_R(color), COLORMAIN_G(color), COLORMAIN_B(color));
 
 	G2D_V0->V0_PITCH0 = PIXEL_SIZE;//PIXEL_SIZE;	// Y
 	G2D_V0->V0_PITCH1 = 0;	// U
@@ -2078,6 +2078,48 @@ void colpip_rect(
 		colpip_line(buffer, dx, dy, x2, y1, x2, y2, color);		// правая вертикаль
 	}
 }
+
+#if WITHDISPLAYSNAPSHOT && WITHUSEAUDIOREC
+
+static uint_fast8_t snapshot_req;
+/* запись видимого изображения */
+void
+display_snapshot(
+	PACKEDCOLORMAIN_T * buffer,
+	uint_fast16_t dx,
+	uint_fast16_t dy
+	)
+{
+	if (snapshot_req != 0)
+	{
+		snapshot_req = 0;
+		/* запись файла */
+		display_snapshot_write(buffer, dx, dy);
+	}
+}
+
+void display_snapshot_req(void)
+{
+	snapshot_req = 1;
+}
+
+#else /* WITHDISPLAYSNAPSHOT && WITHUSEAUDIOREC */
+/* stub */
+/* запись видимого изображения */
+void
+display_snapshot(
+	PACKEDCOLORMAIN_T * buffer,
+	uint_fast16_t dx,
+	uint_fast16_t dy
+	)
+{
+}
+
+/* stub */
+void display_snapshot_req(void)
+{
+}
+#endif /* WITHDISPLAYSNAPSHOT && WITHUSEAUDIOREC */
 
 void
 colmain_fillrect(

@@ -99,6 +99,11 @@ enum
 #if WITHUSBDFU
 		/* no endpoints need */
 #endif /* WITHUSBDFU */
+
+#if WITHUSBDMTP
+	USBD_EP_MTP_INT,	// MTP INT События в компьютер из TRX
+	USBD_EP_MTP_IN,		// MTP IN Данные в компьютер из TRX
+#endif /* WITHUSBDMTP */
 	//
 	epincount
 };
@@ -136,6 +141,10 @@ enum
 #if WITHUSBDFU
 		/* no endpoints need */
 #endif /* WITHUSBDFU */
+
+#if WITHUSBDMTP
+	USBD_EP_MTP_OUT,	// MTP OUT Данные от компьютера в TRX
+#endif /* WITHUSBDMTP */
 	//
 	epoutcount
 };
@@ -315,6 +324,10 @@ enum interfaces_tag
 	// функция DFU
 	INTERFACE_DFU_CONTROL,		/* DFU control Interface */
 #endif /* WITHUSBDFU */
+
+#if WITHUSBDMTP
+	INTERFACE_MTP_CONTROL,	/* MTP control Interface */
+#endif /* WITHUSBDMTP */
 	// 
 	INTERFACE_count				/* Значение для configuration descriptor */
 };
@@ -325,6 +338,7 @@ enum interfaces_tag
 #define INTERFACE_HID_count 1	/* количество интерфейсов в одном HID */
 #define INTERFACE_RNDIS_count 2	/* количество интерфейсов в одном RNDIS */
 #define INTERFACE_DFU_count 1	/* количество интерфейсов в одном DFU */
+#define INTERFACE_MTP_count 1	/* количество интерфейсов в одном MTP */
 
 //#define INTERFACE_UAC_count (INTERFACE_AUDIO_last - INTERFACE_AUDIO_CONTROL_SPK)
 
@@ -429,6 +443,13 @@ enum interfaces_tag
 			//
 		};
 	#endif /* WITHUSBHID */
+	#if WITHUSBDMTP
+		enum
+		{
+			INTERFACE_MTP_CONTROL	/* MTP control Interface */
+			//
+		};
+	#endif /* WITHUSBDMTP */
 
 	#if WITHUSBDFU
 		enum
@@ -444,6 +465,7 @@ enum interfaces_tag
 	#define INTERFACE_HID_count 1	/* количество интерфейсов в одном HID */
 	#define INTERFACE_RNDIS_count 2	/* количество интерфейсов в одном RNDIS */
 	#define INTERFACE_DFU_count 1	/* количество интерфейсов в одном DFU */
+	#define INTERFACE_MTP_count 1	/* количество интерфейсов в одном MTP */
 
 	enum
 	{
