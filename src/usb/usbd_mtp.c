@@ -106,16 +106,16 @@ static uint8_t USBD_MTP_Init(USBD_HandleTypeDef *pdev, uint_fast8_t cfgidx)
 
 
   /* Initialize all variables */
-  (void)USBD_memset(hmtp, 0, sizeof(USBD_MTP_HandleTypeDef));
+  (void)USBD_memset(hmtp, 0, sizeof (USBD_MTP_HandleTypeDef));
 
   /* Setup the max packet size according to selected speed */
   if (pdev->dev_speed == USBD_SPEED_HIGH)
   {
-    hmtp->MaxPcktLen = MTP_DATA_MAX_HS_PACKET_SIZE;
+    hmtp->MaxPcktLen = MTP_DATA_MAX_PACKET_SIZE;
   }
   else
   {
-    hmtp->MaxPcktLen = MTP_DATA_MAX_FS_PACKET_SIZE;
+    hmtp->MaxPcktLen = MTP_DATA_MAX_PACKET_SIZE;
   }
 
   /* Open EP IN */
@@ -203,6 +203,9 @@ static uint8_t USBD_MTP_Setup(USBD_HandleTypeDef *pdev, const USBD_SetupReqTyped
   {
     return (uint8_t)USBD_FAIL;
   }
+  const uint_fast8_t interfacev = LO_BYTE(req->wIndex);
+  if (interfacev != INTERFACE_MTP_CONTROL)
+		return USBD_OK;
 
   switch (req->bmRequest & USB_REQ_TYPE_MASK)
   {

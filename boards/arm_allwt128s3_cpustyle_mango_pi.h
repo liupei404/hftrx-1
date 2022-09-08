@@ -71,7 +71,7 @@
 
 	////#define WITHEHCIHW	1	/* USB_EHCI controller */
 	////#define WITHUSBHW_EHCI		USB1_EHCI
-	#define WITHEHCIHW_EHCIPORT 0	// 0 - use 1st PHY port, 1 - 2nd PHY port (shared with USB_OTG_HS). See also USBPHYC_MISC_SWITHOST_VAL
+	#define WITHEHCIHW_EHCIPORT 0	// 0 - use 1st PHY port
 
 
 	#define WITHCAT_CDC		1	/* использовать виртуальный последовательный порт на USB соединении */
@@ -113,7 +113,7 @@
 
 	#define WITHUSBHW_DEVICE	USBOTG0	/* на этом устройстве поддерживается функциональность DEVICE	*/
 	#define WITHUSBDEV_VBUSSENSE	1		/* используется предопределенный вывод OTG_VBUS */
-	#define WITHUSBDEV_HSDESC	1			/* Требуется формировать дескрипторы как для HIGH SPEED */
+	//#define WITHUSBDEV_HSDESC	1			/* Требуется формировать дескрипторы как для HIGH SPEED */
 	//#define WITHUSBDEV_HIGHSPEEDULPI	1	// ULPI
 	#define WITHUSBDEV_HIGHSPEEDPHYC	1	// UTMI -> USB0_DP & USB0_DM
 	#define WITHUSBDEV_DMAENABLE 1
@@ -128,7 +128,7 @@
 	#define WITHUSBHW_OHCI		USBOHCI1
 
 	#define WITHUSBHOST_HIGHSPEEDPHYC	1	// UTMI -> USB1_DP & USB1_DM
-	#define WITHEHCIHW_EHCIPORT 0	// 0 - use 1st PHY port, 1 - 2nd PHY port (shared with USB_OTG_HS). See also USBPHYC_MISC_SWITHOST_VAL
+	#define WITHEHCIHW_EHCIPORT 0	// 0 - use 1st PHY port
 
 	#define WITHCAT_CDC		1	/* использовать виртуальный последовательный порт на USB соединении */
 	#define WITHMODEM_CDC	1
@@ -148,8 +148,9 @@
 	#endif /* WITHINTEGRATEDDSP */
 
 	#define WITHUSBCDCACM		1	/* ACM использовать виртуальный последовательный порт на USB соединении */
-	#define WITHUSBCDCACM_N	1	/* количество виртуальных последовательных портов */
+	#define WITHUSBCDCACM_N		1	/* количество виртуальных последовательных портов */
     //#define WITHUSBCDCACMINTSHARING 1    /* Использование общей notification endpoint на всех CDC ACM устрйоствах */
+
 	#if WITHLWIP
 		#define WITHUSBCDCEEM	1	/* EEM использовать Ethernet Emulation Model на USB соединении */
 		//#define WITHUSBCDCECM	1	/* ECM использовать Ethernet Control Model на USB соединении */
@@ -161,6 +162,7 @@
 	#define WITHMOVEDFU 1	// Переместить интерфейс DFU в область меньших номеров. Утилита dfu-util 0.9 не работает с DFU на интерфейсе с индексом 10
 	#define WITHUSBWCID	1
 	//#define WITHUSBDMTP	1	/* MTP USB Device */
+	//#define WITHUSBDMSC	1	/* MSC USB device */
 
 #endif /* WITHISBOOTLOADER */
 
