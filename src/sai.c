@@ -121,8 +121,8 @@ enum
 
 		// На передачу во всех версиях FPGA используется один и тот же блок
 		// В каждой половине фрейма используется первый слот (первые 32 бита после переключения WS)
-		#define DMABUFFSTEP32TX	2		// 2 - каждому сэмплу соответствует два числа в DMA буфере	- I/Q
-		SLOTEN_TX_SAIFPGA = 0x0011,
+		#define DMABUFFSTEP32TX	8
+		SLOTEN_TX_SAIFPGA = 0x00FF,
 
 	#elif WITHFPGAIF_FRAMEBITS == 64
 		//#if WITHRTS96 || WITHUSEDUALWATCH
@@ -3260,6 +3260,30 @@ static void hardware_sai2_a_enable_fpga(uint_fast8_t state)		/* разрешен
 }
 
 static void hardware_sai2_b_enable_fpga(uint_fast8_t state)		/* разрешение работы SAI1 на STM32F4xx */
+{
+	if (state != 0)
+	{
+		SAI2_Block_B->CR1 |= SAI_xCR1_SAIEN;
+	}
+	else
+	{
+		SAI2_Block_B->CR1 &= ~ SAI_xCR1_SAIEN;
+	}
+}
+
+static void hardware_sai2_a_enable_wfm(uint_fast8_t state)		/* разрешение работы SAI1 на STM32F4xx */
+{
+	if (state != 0)
+	{
+		SAI2_Block_A->CR1 |= SAI_xCR1_SAIEN;
+	}
+	else
+	{
+		SAI2_Block_A->CR1 &= ~ SAI_xCR1_SAIEN;
+	}
+}
+
+static void hardware_sai2_b_enable_wfm(uint_fast8_t state)		/* разрешение работы SAI1 на STM32F4xx */
 {
 	if (state != 0)
 	{
