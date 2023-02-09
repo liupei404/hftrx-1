@@ -41,6 +41,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32mp1xx_hal.h"
 
+#include <stdlib.h>
+
 /** @addtogroup STM32MP1xx_LL_USB_DRIVER
   * @{
   */
@@ -108,7 +110,7 @@ HAL_StatusTypeDef USB_HS_PHYCInit(void)
 	// https://github.com/Xilinx/u-boot-xlnx/blob/master/drivers/phy/phy-stm32-usbphyc.c
 
 	const uint_fast32_t USBPHYCPLLFREQUENCY = 1440000000uL;	// 1.44 GHz
-	const uint_fast32_t usbphyref = LL_RCC_GetUSBPHYClockFreq(LL_RCC_USBPHY_CLKSOURCE);
+	const uint_fast32_t usbphyref = LL_RCC_GetUSBPHYClockFreq(RCC_USBCKSELR_USBPHYSRC);
 	//uint_fast32_t usbphyref = stm32mp1_get_usbphy_freq();
 	//ASSERT(usbphyref >= 19200000uL && usbphyref <= 38400000uL);
 	const uint_fast32_t ODF = 0;	// ������������

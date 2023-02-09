@@ -21,7 +21,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32mp1_hal.h"
+#include "stm32mp1xx_hal.h"
 
 /** @addtogroup STM32MP1xx_HAL_Driver
   * @{

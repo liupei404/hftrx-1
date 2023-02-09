@@ -55,7 +55,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32h7xx_hal.h"
+#include "stm32mp1xx_hal.h"
 
 /** @addtogroup STM32H7xx_HAL_Driver
   * @{
@@ -1390,7 +1390,7 @@ void HAL_PCD_IRQHandler(PCD_HandleTypeDef *hpcd)
 
       /* Set USB Turnaround time */
       (void)USB_SetTurnaroundTime(hpcd->Instance,
-                                  HAL_RCC_GetHCLKFreq(),
+    		  	  	  	  	  	  HAL_RCC_GetAXISSFreq(),	// was: HAL_RCC_GetHCLKFreq()
                                   (uint8_t)hpcd->Init.speed);
 
 #if (USE_HAL_PCD_REGISTER_CALLBACKS == 1U)
