@@ -89,7 +89,7 @@
 //		{	31,	0,	display2_preovf5alt,	REDRM_BARS, PGALL, },
 //		{	35,	0,	display2_genham1,	REDRM_BARS, PGALL, },	// Отображение режима General Coverage / HAM bands
 //		{	38,	0,	display2_lockstate5alt, REDRM_MODE, PGALL, },	// LOCK
-		{	42, 0,	display2_notch7alt,	REDRM_MODE, PGALL, },	// NOTCH on/off
+		{	42, 0,	display2_notch_lvgl,	REDRM_MODE, PGALL, },	// NOTCH on/off
 //		{	42, 5,	display2_voxtune3,	REDRM_MODE, PGALL, },	// VOX
 //		{	46, 5,	display2_datamode3,	REDRM_MODE, PGALL, },	// DATA mode indicator
 //		{	46, 15,	display2_usbsts3,	REDRM_BARS, PGALL, },	// USB host status
@@ -112,14 +112,14 @@
 //		{	42, 15,	display2_atu4alt,		REDRM_MODE, PGALL, },	// TUNER state (optional)
 //		{	42, 20,	display2_byp4alt,		REDRM_MODE, PGALL, },	// TUNER BYPASS state (optional)
 //
-//		{	17,	7,	display2_freqX_a,	REDRM_FREQ, PGALL, },	// MAIN FREQ Частота (большие цифры)
-//		{	38, 10,	display2_mode3_a,	REDRM_MODE,	PGALL, },	// SSB/CW/AM/FM/...
+		{	17,	7,	display2_freqX_a_lvgl,	REDRM_FREQ, PGALL, },	// MAIN FREQ Частота (большие цифры)
+		{	38, 10,	display2_mode3_a_lvgl,	REDRM_MODE,	PGALL, },	// SSB/CW/AM/FM/...
 //		{	42, 10,	display2_rxbw3,		REDRM_MODE, PGALL, },	// 3.1 / 0,5 / WID / NAR
 //		{	46, 10,	display2_nr3,		REDRM_MODE, PGALL, },	// NR : was: AGC
 //		{	38, 15,	display2_mainsub3,	REDRM_MODE, PGALL, },	// main/sub RX: A/A, A/B, B/A, etc
 //
 //		{	42,	15,	display2_vfomode5alt,	REDRM_MODE, PGALL, },	// SPLIT
-//		{	26,	20,	display2_freqX_b,	REDRM_FRQB, PGALL, },	// SUB FREQ
+		{	21,	17,	display2_freqX_b_lvgl,	REDRM_FRQB, PGALL, },	// SUB FREQ
 //		{	38, 20,	display2_mode3_b,	REDRM_MODE,	PGALL, },	// SSB/CW/AM/FM/...
 //		{	0,				0,		display2_keyboard_menu,					REDRM_KEYB, REDRSUBSET_MENU, }, // Обработка клавиатуры и валкодеров при нахождении в режиме меню
 
@@ -136,7 +136,7 @@
 //		{	0,	DLES,	display2_waterfall,	REDRM_BARS, PGWFL | PGGUI, },// подготовка изображения водопада
 //		{	0,	DLES,	display2_colorbuff,	REDRM_BARS,	PGWFL | PGSPE | PGGUI, },// Отображение водопада и/или спектра
 	#endif /* WITHSPECTRUMWF */
-		{	0, 0,	display2_lgvl,	REDRM_MODE, PGALL, },
+		{	0, 0,	display2_lvgl,	REDRM_MODE, PGALL, },
 #endif
 	};
 
