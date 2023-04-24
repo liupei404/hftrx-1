@@ -20,6 +20,9 @@
 #if WITHALTERNATIVEFONTS
 	#include "display/fonts/ub_fonts.h"
 #endif /* WITHALTERNATIVEFONTS */
+#if WITHLVGL
+	#include "lvgl/lvgl.h"
+#endif /* WITHLVGL */
 
 #define WITHPLACEHOLDERS 1	//  отображение макета с еще незанятыми полями
 
@@ -1740,9 +1743,35 @@ static void display2_notch7alt(
 	const uint_fast8_t state = hamradio_get_notchvalue(& freq);
 	const char FLASHMEM * const label = hamradio_get_notchtype5_P();
 	const char FLASHMEM * const labels [2] = { label, label, };
+#if WITHLVGL
+	static lv_obj_t * lbl = NULL;
+	if (! lbl)
+	{
+		lbl = lv_label_create(lv_scr_act());
+		uint_fast16_t xx = GRID2X(x);
+		uint_fast16_t yy = GRID2Y(y);
+		lv_obj_set_pos(lbl, xx, yy);
+	}
+
+	lv_label_set_text(lbl, label);
+
+
+#else
 	layout_label1_medium(x, y, label, strlen_P(label), 7, COLORMAIN_BLACK, colors_2state_alt [state]);
+#endif
 #endif /* WITHNOTCHONOFF || WITHNOTCHFREQ */
 }
+
+#if WITHLVGL
+static void display2_lgvl(
+	uint_fast8_t x,
+	uint_fast8_t y,
+	dctx_t * pctx
+	)
+{
+	lv_task_handler();
+}
+#endif /* WITHLVGL */
 
 // Отображение частоты NOCH
 static void display2_notchfreq5(

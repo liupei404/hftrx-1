@@ -1723,17 +1723,21 @@ void hardware_ltdc_L8_palette(void)
 /* Вызывается из display_flush, используется только в тестах */
 void hardware_ltdc_main_set_no_vsync(uintptr_t addr)
 {
+#if ! WITHLVGL
 	uint32_t size;
 	uint32_t * linux_fb = linux_get_fb(& size);
 	memcpy(linux_fb, (uint32_t *) addr, size);
+#endif /* ! WITHLVGL */
 }
 
 /* Set MAIN frame buffer address. */
 void hardware_ltdc_main_set(uintptr_t addr)
 {
+#if ! WITHLVGL
 	uint32_t size;
 	uint32_t * linux_fb = linux_get_fb(& size);
 	memcpy(linux_fb, (uint32_t *) addr, size);
+#endif /* ! WITHLVGL */
 }
 
 /* ожидаем начало кадра */

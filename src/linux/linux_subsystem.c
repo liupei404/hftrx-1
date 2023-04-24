@@ -22,6 +22,15 @@
 #include <sys/stat.h>
 #include <termios.h>
 
+#if WITHLVGL
+
+	#include "lvgl/lvgl.h"
+	#include "lv_drivers/display/fbdev.h"
+
+	#define DISP_BUF_SIZE	(128 * DIM_X)
+
+#endif /* WITHLVGL */
+
 void xcz_resetn_modem_state(uint8_t val);
 void linux_run_shell_cmd(uint8_t argc, const char * argv []);
 void ft8_thread(void);
@@ -80,6 +89,19 @@ void linux_encoder_spool(void)
 		usleep(1000);
 	}
 }
+
+#if WITHLVGL
+
+void lvgl_timer_handler(void)
+{
+	while(1)
+	{
+		lv_tick_inc(1);
+		usleep(1000);
+	}
+}
+
+#endif /* WITHLVGL */
 
 #if WITHNMEA && WITHLFM
 
@@ -164,17 +186,30 @@ uint32_t * fbmem_at(uint_fast16_t x, uint_fast16_t y)
 
 int linux_framebuffer_init(void)
 {
-	int ttyd = open(LINUX_TTY_FILE, O_RDWR);
-	if (ttyd)
-		ioctl(ttyd, KDSETMODE, KD_GRAPHICS);
-	else
-	{
-		PRINTF("Error: cannot open tty device");
-		exit(1);
-	}
+#if WITHLVGL
+	/*LVGL init*/
+	lv_init();
 
-	close(ttyd);
+	/*Linux frame buffer device init*/
+	fbdev_init();
 
+	/*A small buffer for LittlevGL to draw the screen's content*/
+	static lv_color_t buf1[DISP_BUF_SIZE];
+	static lv_color_t buf2[DISP_BUF_SIZE];
+
+	/*Initialize a descriptor for the buffer*/
+	static lv_disp_draw_buf_t disp_buf;
+	lv_disp_draw_buf_init(&disp_buf, buf1, buf2, DISP_BUF_SIZE);
+
+	/*Initialize and register a display driver*/
+	static lv_disp_drv_t disp_drv;
+	lv_disp_drv_init(& disp_drv);
+	disp_drv.draw_buf   = & disp_buf;
+	disp_drv.flush_cb   = fbdev_flush;
+	disp_drv.hor_res    = DIM_X;
+	disp_drv.ver_res    = DIM_Y;
+	lv_disp_drv_register(& disp_drv);
+#else
 	// Open the file for reading and writing
 	int fbfd = open(LINUX_FB_FILE, O_RDWR);
 	if (fbfd == -1) {
@@ -207,6 +242,8 @@ int linux_framebuffer_init(void)
 	PRINTF("linux drm fb: %dx%d, %dbpp, %d bytes %p\n", vinfo.xres, vinfo.yres, vinfo.bits_per_pixel, screensize, fbp);
 
 	close(fbfd);
+#endif /* */
+
 	return 0;
 }
 
@@ -604,6 +641,17 @@ void linux_cancel_thread(pthread_t tid)
 
 void linux_subsystem_init(void)
 {
+	int ttyd = open(LINUX_TTY_FILE, O_RDWR);
+	if (ttyd)
+		ioctl(ttyd, KDSETMODE, KD_GRAPHICS);
+	else
+	{
+		PRINTF("Error: cannot open tty device");
+		exit(1);
+	}
+
+	close(ttyd);
+
 #if 1 //CPUSTYLE_XCZU
 	char spid[6];
 	local_snprintf_P(spid, ARRAY_SIZE(spid), "%d", getpid());
@@ -615,7 +663,7 @@ void linux_subsystem_init(void)
 	linux_iq_init();
 }
 
-pthread_t timer_spool_t, encoder_spool_t, iq_interrupt_t, ft8_t, nmea_t, pps_t;
+pthread_t timer_spool_t, encoder_spool_t, iq_interrupt_t, ft8_t, nmea_t, pps_t, lvgl_timer_t;
 
 #if WITHCPUTEMPERATURE && CPUSTYLE_XCZU
 #include "../sysmon/xsysmonpsu.h"
@@ -667,6 +715,18 @@ void linux_user_init(void)
 	linux_create_thread(& nmea_t, linux_nmea_spool, 20, 0);
 	linux_create_thread(& pps_t, linux_pps_thread, 90, 1);
 #endif /* WITHNMEA && WITHLFM */
+
+#if WITHLVGL
+	static lv_style_t style;
+	lv_style_init(&style);
+	lv_style_set_bg_color(&style, lv_color_black());
+	lv_style_set_text_color(&style, lv_color_white());
+	lv_style_set_border_width(&style, 0);
+	lv_style_set_pad_all(&style, 0);
+	lv_obj_add_style(lv_scr_act(), &style, 0);
+
+	linux_create_thread(& lvgl_timer_t, lvgl_timer_handler, 50, 0);
+#endif /* WITHLVGL */
 }
 
 /****************************************************************/
