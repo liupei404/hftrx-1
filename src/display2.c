@@ -1363,33 +1363,6 @@ static void display2_freqX_a(
 	dctx_t * pctx
 	)
 {
-#if WITHLVGL
-	static lv_obj_t * lbl = NULL;
-	static lv_style_t  freq_main_style;
-	if (! lbl)
-	{
-		lbl = lv_label_create(lv_scr_act());
-	    lv_style_init(& freq_main_style);
-	    lv_style_set_text_color(& freq_main_style, lv_color_white());
-	    lv_style_set_text_font(& freq_main_style, & sony_44);
-	    lv_style_set_pad_ver(& freq_main_style, 5);
-
-	    lv_obj_add_style(lbl, & freq_main_style, 0);
-		lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
-
-		uint_fast16_t xx = GRID2X(x);
-		uint_fast16_t yy = GRID2Y(y);
-		lv_obj_set_pos(lbl, xx, yy);
-		lv_label_set_recolor(lbl, true);
-	}
-
-	const uint_fast32_t freq = hamradio_get_freq_a();
-	uint16_t mhz = mhz = freq / 1000000;
-	uint16_t khz = (freq / 1000) % 1000;
-	uint16_t hz = freq % 1000;
-	lv_label_set_text_fmt(lbl, "#%03X %i.%03i.%03i", 0xBBBBBB, mhz, khz, hz);
-
-#else
 	uint_fast8_t rj;
 	uint_fast8_t fullwidth = display_getfreqformat(& rj);
 	const uint_fast8_t comma = 3 - rj;
@@ -1418,7 +1391,6 @@ static void display2_freqX_a(
 			display_value_big(x, y + lowhalf, freq, fullwidth, comma, comma + 3, rj, blinkpos, blinkstate, 1, lowhalf);	// отрисовываем верхнюю часть строки
 		} while (lowhalf --);
 	}
-#endif /* WITHLVGL */
 }
 
 static void display2_freqx_a(
@@ -1917,22 +1889,8 @@ static void display2_notch7alt(
 	const uint_fast8_t state = hamradio_get_notchvalue(& freq);
 	const char FLASHMEM * const label = hamradio_get_notchtype5_P();
 	const char FLASHMEM * const labels [2] = { label, label, };
-#if WITHLVGL
-	static lv_obj_t * lbl = NULL;
-	if (! lbl)
-	{
-		lbl = lv_label_create(lv_scr_act());
-		apply_style_label(lbl);
-		uint_fast16_t xx = GRID2X(x);
-		uint_fast16_t yy = GRID2Y(y);
-		lv_obj_set_pos(lbl, xx, yy);
-	}
 
-	lv_label_set_text(lbl, label);
-
-#else
 	layout_label1_medium(x, y, label, strlen_P(label), 7, COLORMAIN_BLACK, colors_2state_alt [state]);
-#endif
 #endif /* WITHNOTCHONOFF || WITHNOTCHFREQ */
 }
 
@@ -2616,22 +2574,7 @@ static void display2_mode3_a(
 {
 	const char FLASHMEM * const labels [1] = { hamradio_get_mode_a_value_P(), };
 	ASSERT(strlen(labels [0]) == 3);
-#if WITHLVGL
-	static lv_obj_t * lbl = NULL;
-	if (! lbl)
-	{
-		lbl = lv_label_create(lv_scr_act());
-		apply_style_label(lbl);
-		uint_fast16_t xx = GRID2X(x);
-		uint_fast16_t yy = GRID2Y(y);
-		lv_obj_set_pos(lbl, xx, yy);
-	}
-
-	lv_label_set_text(lbl, labels [0]);
-
-#else
 	display2_text_P(x, y, labels, colors_1mode, 0);
-#endif /* WITHLVGL */
 }
 
 #if WITHTOUCHGUI
