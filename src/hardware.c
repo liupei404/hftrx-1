@@ -6,22 +6,15 @@
 //
 
 #include "hardware.h"	/* зависящие от процессора функции работы с портами */
-#include "keyboard.h"
 
 #include <string.h>
 #include <math.h>
 
 #include "board.h"
-#include "audio.h"
 #include "formats.h"	// for debug prints
 #include "gpio.h"
 #include "spi.h"
 //#include "buffers.h"
-
-#if WITHRTOS
-#include "FreeRTOS.h"
-//#include "task.h"
-#endif /* WITHRTOS */
 
 #if CPUSTYLE_XC7Z && ! LINUX_SUBSYSTEM
 
@@ -4710,3 +4703,13 @@ struct _reent * __getreent(void)
 
 #endif /* CPUSTYLE_ARM || CPUSTYLE_RISCV */
 
+
+void FreeRTOS_SWI_Handler(void)
+{
+
+}
+
+void FreeRTOS_IRQ_Handler(void)
+{
+
+}

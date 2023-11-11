@@ -18,7 +18,7 @@
 	#include <machine/endian.h>
 #endif /* ! LINUX_SUNSYSTEM */
 
-#define USESPILOCK (WITHSPILOWSUPPORTT || CPUSTYLE_T507 || CPUSTYLE_T113 || CPUSTYLE_F133)	/* доступ к SPI разделяет DFU устройство и user mode программа */
+#define USESPILOCK (1 || CPUSTYLE_T507 || CPUSTYLE_T113 || CPUSTYLE_F133)	/* доступ к SPI разделяет DFU устройство и user mode программа */
 
 #if WITHSPIHW || WITHSPISW
 
@@ -960,11 +960,6 @@ static void
 spi_spool(void * ctx)
 {
 }
-
-static const uint8_t spiadcinputs [] =
-{
-		KI_LIST
-};
 
 void spi_perform_initialize(void)
 {

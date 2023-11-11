@@ -16,7 +16,7 @@ void
 lowinitialize(void)
 {
 #if ! WITHRTOS
-	board_beep_initialize();
+	//board_beep_initialize();
 	//hardware_cw_diagnostics_noirq(1, 0, 1);	// 'K'
 #if WITHDEBUG
 
@@ -68,43 +68,23 @@ main(void)
 
 #endif /* WITHDEBUG && ! CPUSTYLE_ARM */
 
-	lowtests();		/* функции тестирования, работающие до инициализации периферии */
-
 	global_disableIRQ();
 	cpu_initialize();		// в случае ARM - инициализация прерываний и контроллеров, AVR - запрет JTAG
 	lowinitialize();	/* вызывается при запрещённых прерываниях. */
-	applowinitialize();	/* вызывается при запрещённых прерываниях. */
 	global_enableIRQ();
 	cpump_runuser();	/* остальным ядрам разрешаем выполнять прерывания */
-	midtests();
 
-	initialize2();	/* вызывается при разрешённых прерываниях. */
-#if WITHLWIP
-	//network_initialize();
-#endif /* WITHLWIP */
-	application_initialize();
-	hightests();		/* подпрограммы для тестирования аппаратуры */
 
-#if LINUX_SUBSYSTEM
-	linux_user_init();
-#endif /* LINUX_SUBSYSTEM */
 
-#if WITHISBOOTLOADER && WITHISBOOTLOADERFATFS
-	bootloader_fatfs_mainloop();
-#elif WITHISBOOTLOADER0
-	bootloader0_mainloop();
-#elif WITHCTRLBOARDT507
-	ctlboardt507_mainloop();
-#elif WITHISBOOTLOADER
-	bootloader_mainloop();
-#elif 0
-	siggen_mainloop();
-#elif 0
-	hamradio_mainloop_beacon();
-#elif WITHSPISLAVE
-	dspcontrol_mainloop();
-#else /* WITHSPISLAVE */
-	application_mainloop();
-#endif /* WITHSPISLAVE */
+	for (;;)
+	{
+		char c;
+		if (dbg_getchar(& c))
+		{
+			dbg_putchar(c);
+		}
+	}
+
+
 	return 0;
 }
