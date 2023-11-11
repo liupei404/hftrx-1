@@ -55,25 +55,11 @@ int
 //__attribute__ ((used))
 main(void)
 {
-#if LINUX_SUBSYSTEM
-	linux_subsystem_init();
-#endif /* LINUX_SUBSYSTEM */
-#if (CPUSTYLE_ARM || CPUSTYLE_RISCV) && ! LINUX_SUBSYSTEM
-	sysinit_gpio_initialize();
-#endif /* (CPUSTYLE_ARM || CPUSTYLE_RISCV) && ! LINUX_SUBSYSTEM */
-#if WITHDEBUG && (! CPUSTYLE_ARM /* || WITHISBOOTLOADER */)
-
-	HARDWARE_DEBUG_INITIALIZE();
-	HARDWARE_DEBUG_SET_SPEED(DEBUGSPEED);
-
-#endif /* WITHDEBUG && ! CPUSTYLE_ARM */
-
 	global_disableIRQ();
 	cpu_initialize();		// в случае ARM - инициализация прерываний и контроллеров, AVR - запрет JTAG
 	lowinitialize();	/* вызывается при запрещённых прерываниях. */
 	global_enableIRQ();
 	cpump_runuser();	/* остальным ядрам разрешаем выполнять прерывания */
-
 
 
 	for (;;)
